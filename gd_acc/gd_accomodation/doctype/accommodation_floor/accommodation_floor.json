@@ -1,0 +1,192 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{site} - {floor_name}",
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "floor_name",
+  "site",
+  "location",
+  "column_break_basic",
+  "sequence",
+  "status",
+  "occupancy_section",
+  "total_rooms",
+  "total_beds",
+  "column_break_occupancy",
+  "occupied_beds",
+  "available_beds",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "description": "Floor name or number, for example Ground, 01 or 02.",
+   "fieldname": "floor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Floor Name / Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Accommodation Site",
+   "options": "Accommodation Site",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "site.location",
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Location",
+   "options": "Accommodation Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Display order of this floor within the site.",
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "default": "Active",
+   "description": "Use the Disable button to retire this floor. It is never edited directly.",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Active\nInactive",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "occupancy_section",
+   "fieldtype": "Section Break",
+   "label": "Occupancy Summary"
+  },
+  {
+   "fieldname": "total_rooms",
+   "fieldtype": "Int",
+   "label": "Total Rooms",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_beds",
+   "fieldtype": "Int",
+   "label": "Total Beds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_occupancy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "occupied_beds",
+   "fieldtype": "Int",
+   "label": "Occupied Beds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_beds",
+   "fieldtype": "Int",
+   "label": "Available Beds",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-17 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Floor",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "floor_name",
+ "track_changes": 1
+}

@@ -8,7 +8,7 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["frappe/hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/gd_acc/css/gd_acc.css"
-# app_include_js = "/assets/gd_acc/js/gd_acc.js"
+app_include_js = "accommodation.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/gd_acc/css/gd_acc.css"
@@ -43,7 +43,7 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Employee": "gd_accomodation/custom/employee.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -86,7 +86,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "gd_acc.install.before_install"
-# after_install = "gd_acc.install.after_install"
+after_install = "gd_acc.gd_accomodation.setup.setup_accommodation"
+after_migrate = "gd_acc.gd_accomodation.setup.setup_accommodation"
 
 # Uninstallation
 # ------------
@@ -144,13 +145,12 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Employee": {
+		"validate": "gd_acc.gd_accomodation.employee_hooks.validate_accommodation_status",
+		"on_update": "gd_acc.gd_accomodation.employee_hooks.handle_accommodation_status_change",
+	}
+}
 
 # Scheduled Tasks
 # ---------------

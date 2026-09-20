@@ -1,0 +1,247 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "status",
+  "column_break_basic",
+  "assignment_date",
+  "expected_return_date",
+  "return_date",
+  "assigned_to_section",
+  "employee",
+  "employee_name",
+  "column_break_assigned",
+  "total_items",
+  "items_section",
+  "items",
+  "accommodation_section",
+  "location",
+  "site",
+  "column_break_accommodation",
+  "floor",
+  "room",
+  "bed",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "ACC-ASSET-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACC-ASSET-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "Assigned",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Assigned\nReturned\nDamaged\nLost\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assignment_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Assignment Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expected_return_date",
+   "fieldtype": "Date",
+   "label": "Expected Return Date"
+  },
+  {
+   "depends_on": "eval:[\"Returned\", \"Damaged\", \"Lost\"].includes(doc.status)",
+   "fieldname": "return_date",
+   "fieldtype": "Date",
+   "label": "Return Date",
+   "mandatory_depends_on": "eval:doc.status == \"Returned\""
+  },
+  {
+   "fieldname": "assigned_to_section",
+   "fieldtype": "Section Break",
+   "label": "Assigned To"
+  },
+  {
+   "description": "Leave blank when the items belong to the room or site rather than to one employee.",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_assigned",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Sum of the quantities issued on this document.",
+   "fieldname": "total_items",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Items",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items Issued"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Accommodation Assigned Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "accommodation_section",
+   "fieldtype": "Section Break",
+   "label": "Accommodation Reference"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Location",
+   "options": "Accommodation Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Accommodation Site",
+   "options": "Accommodation Site",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_accommodation",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "floor",
+   "fieldtype": "Link",
+   "label": "Floor",
+   "options": "Accommodation Floor"
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "Room",
+   "options": "Accommodation Room"
+  },
+  {
+   "fieldname": "bed",
+   "fieldtype": "Link",
+   "label": "Bed",
+   "options": "Accommodation Bed"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-18 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Asset Assignment",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,6 +1,11 @@
 [pre_model_sync]
 # Patches added in this section will be executed before doctypes are migrated
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+gd_acc.patches.v1_0.create_gd_accomodation_roles
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+gd_acc.patches.v1_0.setup_gd_accomodation
+gd_acc.patches.v1_0.create_accommodation_workspace
+gd_acc.patches.v1_0.backfill_accommodation_codes
+gd_acc.patches.v1_0.backfill_accommodation_entitlements

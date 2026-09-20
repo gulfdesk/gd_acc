@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "accommodation_allowance_section",
+  "accommodation_allowance_component"
+ ],
+ "fields": [
+  {
+   "fieldname": "accommodation_allowance_section",
+   "fieldtype": "Section Break",
+   "label": "Accommodation Allowance"
+  },
+  {
+   "description": "Salary component the accommodation allowance is paid through. Accommodation Entitlement reads the amount from the employee's salary structure using this component.",
+   "fieldname": "accommodation_allowance_component",
+   "fieldtype": "Link",
+   "label": "Accommodation Allowance Component",
+   "options": "Salary Component"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "GD Acc Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

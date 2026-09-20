@@ -1,0 +1,244 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{location} - {site_name}",
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "site_name",
+  "site_code",
+  "location",
+  "status",
+  "column_break_basic",
+  "accommodation_type",
+  "sub_type",
+  "enable_bed_allocation",
+  "manager",
+  "address_section",
+  "address",
+  "column_break_address",
+  "contact_number",
+  "occupancy_section",
+  "total_floors",
+  "total_rooms",
+  "column_break_occupancy",
+  "total_beds",
+  "occupied_beds",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Site Name",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "description": "Generated automatically when the site is first saved.",
+   "fieldname": "site_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Site Code",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Location",
+   "options": "Accommodation Location",
+   "reqd": 1
+  },
+  {
+   "default": "Active",
+   "description": "Use the Disable button to retire this site. It is never edited directly.",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Active\nInactive",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Camp",
+   "fieldname": "accommodation_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Accommodation Type",
+   "options": "Camp\nBuilding\nOther",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.accommodation_type == \"Other\"",
+   "description": "Applicable when Accommodation Type is Other.",
+   "fieldname": "sub_type",
+   "fieldtype": "Select",
+   "label": "Sub-Type",
+   "mandatory_depends_on": "eval:doc.accommodation_type == \"Other\"",
+   "options": "\nVilla\nFlat\nHouse\nApartment\nOther"
+  },
+  {
+   "default": "1",
+   "description": "Uncheck for units such as a Villa or Flat where employees are assigned to the unit rather than to an individual bed. When unchecked, Bed is optional on allocation.",
+   "fieldname": "enable_bed_allocation",
+   "fieldtype": "Check",
+   "label": "Enable Bed Level Allocation"
+  },
+  {
+   "fieldname": "manager",
+   "fieldtype": "Link",
+   "label": "Site Manager",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "address_section",
+   "fieldtype": "Section Break",
+   "label": "Address"
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "column_break_address",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "occupancy_section",
+   "fieldtype": "Section Break",
+   "label": "Occupancy Summary"
+  },
+  {
+   "fieldname": "total_floors",
+   "fieldtype": "Int",
+   "label": "Total Floors",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_rooms",
+   "fieldtype": "Int",
+   "label": "Total Rooms",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_occupancy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_beds",
+   "fieldtype": "Int",
+   "label": "Total Beds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "occupied_beds",
+   "fieldtype": "Int",
+   "label": "Occupied Beds",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-17 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Site",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "site_name",
+ "track_changes": 1
+}

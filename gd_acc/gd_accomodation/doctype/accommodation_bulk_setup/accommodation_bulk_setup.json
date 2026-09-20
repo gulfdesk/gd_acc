@@ -1,0 +1,192 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "location",
+  "site",
+  "column_break_basic",
+  "status",
+  "generated_on",
+  "floors_section",
+  "floors",
+  "result_section",
+  "created_floors",
+  "created_rooms",
+  "column_break_result",
+  "created_beds",
+  "generation_log",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "ACC-BULK-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACC-BULK-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Location",
+   "options": "Accommodation Location",
+   "reqd": 1
+  },
+  {
+   "description": "Floors, rooms and beds are generated under this site.",
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Accommodation Site",
+   "options": "Accommodation Site",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Draft\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_on",
+   "fieldtype": "Datetime",
+   "label": "Generated On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "floors_section",
+   "fieldtype": "Section Break",
+   "label": "Floor Configuration"
+  },
+  {
+   "fieldname": "floors",
+   "fieldtype": "Table",
+   "label": "Floors",
+   "options": "Accommodation Bulk Setup Floor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Generation Result"
+  },
+  {
+   "fieldname": "created_floors",
+   "fieldtype": "Int",
+   "label": "Created Floors",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_rooms",
+   "fieldtype": "Int",
+   "label": "Created Rooms",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_result",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_beds",
+   "fieldtype": "Int",
+   "label": "Created Beds",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "generation_log",
+   "fieldtype": "Small Text",
+   "label": "Generation Log",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-17 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Bulk Setup",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,347 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-18 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "employee",
+  "employee_name",
+  "company",
+  "designation",
+  "column_break_basic",
+  "entitlement_type",
+  "status",
+  "from_date",
+  "to_date",
+  "release_section",
+  "previous_entitlement",
+  "previous_allocation",
+  "column_break_release",
+  "release_date",
+  "release_reason",
+  "allowance_section",
+  "allowance_component",
+  "allowance_amount",
+  "allowance_currency",
+  "column_break_allowance",
+  "allowance_frequency",
+  "salary_structure",
+  "allowance_source",
+  "allocation_section",
+  "allocation_html",
+  "remarks_section",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "default": "ACC-ENT-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACC-ENT-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Company Accommodation",
+   "description": "What the company provides for this employee.",
+   "fieldname": "entitlement_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Entitlement",
+   "options": "Company Accommodation\nAllowance\nNot Provided",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Draft\nActive\nClosed\nCancelled",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "description": "Set automatically when a newer entitlement replaces this one.",
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "Effective To",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.previous_allocation",
+   "fieldname": "release_section",
+   "fieldtype": "Section Break",
+   "label": "Release of Current Accommodation"
+  },
+  {
+   "fieldname": "previous_entitlement",
+   "fieldtype": "Link",
+   "label": "Replaces Entitlement",
+   "no_copy": 1,
+   "options": "Accommodation Entitlement",
+   "read_only": 1
+  },
+  {
+   "description": "The employee is currently housed under this allocation. It will be closed on the release date below.",
+   "fieldname": "previous_allocation",
+   "fieldtype": "Link",
+   "label": "Allocation To Release",
+   "no_copy": 1,
+   "options": "Accommodation Allocation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_release",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The date the employee actually leaves the accommodation. Kept in the allocation history.",
+   "fieldname": "release_date",
+   "fieldtype": "Date",
+   "label": "Release Date",
+   "mandatory_depends_on": "eval:doc.previous_allocation",
+   "no_copy": 1
+  },
+  {
+   "default": "Accommodation Status Change",
+   "fieldname": "release_reason",
+   "fieldtype": "Select",
+   "label": "Release Reason",
+   "no_copy": 1,
+   "options": "Accommodation Status Change\nEmployee Exit\nManual Release\nOther"
+  },
+  {
+   "depends_on": "eval:doc.entitlement_type == \"Allowance\"",
+   "fieldname": "allowance_section",
+   "fieldtype": "Section Break",
+   "label": "Accommodation Allowance"
+  },
+  {
+   "description": "Payroll component this allowance is paid through. Defaults from GD Acc Settings.",
+   "fieldname": "allowance_component",
+   "fieldtype": "Link",
+   "label": "Salary Component",
+   "options": "Salary Component"
+  },
+  {
+   "description": "Pulled from the employee's active salary structure. Override only if payroll differs.",
+   "fieldname": "allowance_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Allowance Amount",
+   "options": "allowance_currency"
+  },
+  {
+   "fieldname": "allowance_currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "column_break_allowance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Monthly",
+   "fieldname": "allowance_frequency",
+   "fieldtype": "Select",
+   "label": "Frequency",
+   "options": "Monthly\nQuarterly\nAnnual\nOne Time"
+  },
+  {
+   "description": "Salary structure the amount was read from.",
+   "fieldname": "salary_structure",
+   "fieldtype": "Link",
+   "label": "Salary Structure",
+   "options": "Salary Structure",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allowance_source",
+   "fieldtype": "Small Text",
+   "label": "Allowance Source",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.entitlement_type == \"Company Accommodation\" && !doc.__islocal",
+   "fieldname": "allocation_section",
+   "fieldtype": "Section Break",
+   "label": "Accommodation"
+  },
+  {
+   "fieldname": "allocation_html",
+   "fieldtype": "HTML",
+   "label": "Allocation"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Accommodation Entitlement",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-09-18 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Entitlement",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name",
+ "track_changes": 1
+}

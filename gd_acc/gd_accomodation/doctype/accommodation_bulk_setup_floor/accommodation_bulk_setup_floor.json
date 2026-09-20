@@ -1,0 +1,125 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "floor_name",
+  "sequence",
+  "number_of_rooms",
+  "room_number_prefix",
+  "room_start_number",
+  "bed_configuration",
+  "beds_per_room",
+  "generated_beds_per_room",
+  "bed_number_prefix",
+  "room_type",
+  "capacity"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "description": "For example Ground, 01 or 02.",
+   "fieldname": "floor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Floor Name / Number",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "number_of_rooms",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rooms",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "description": "Prefix applied to generated room numbers, for example 2 generates 201, 202.",
+   "fieldname": "room_number_prefix",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Room Prefix"
+  },
+  {
+   "default": "1",
+   "fieldname": "room_start_number",
+   "fieldtype": "Int",
+   "label": "Room Start No"
+  },
+  {
+   "columns": 1,
+   "default": "Single",
+   "description": "Single generates one bed per unit. Bunk generates a lower and an upper bed for every unit.",
+   "fieldname": "bed_configuration",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Bed Setup",
+   "options": "Single\nBunk"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "Single: number of beds in each room. Bunk: number of bunk beds in each room, each generating an upper and a lower bed. Set 0 for sites that do not use bed level allocation.",
+   "fieldname": "beds_per_room",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Beds / Bunks"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "Beds actually generated in each room. Bunk setups produce twice the number entered.",
+   "fieldname": "generated_beds_per_room",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "= Beds",
+   "read_only": 1
+  },
+  {
+   "default": "B",
+   "fieldname": "bed_number_prefix",
+   "fieldtype": "Data",
+   "label": "Bed Prefix"
+  },
+  {
+   "columns": 1,
+   "default": "Shared",
+   "fieldname": "room_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Room Type",
+   "options": "Shared\nPrivate\nStudio\nOther"
+  },
+  {
+   "default": "0",
+   "description": "Leave 0 to use the number of beds generated for the room.",
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-18 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Bulk Setup Floor",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

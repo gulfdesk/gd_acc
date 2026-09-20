@@ -1,0 +1,237 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-17 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "bed",
+  "room",
+  "floor",
+  "site",
+  "location",
+  "column_break_basic",
+  "change_datetime",
+  "previous_status",
+  "new_status",
+  "reason",
+  "reference_section",
+  "employee",
+  "employee_name",
+  "column_break_reference",
+  "allocation",
+  "transfer",
+  "changed_by",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "ACC-BSH-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACC-BSH-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bed",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Bed",
+   "options": "Accommodation Bed",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "bed.room",
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "Room",
+   "options": "Accommodation Room",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bed.floor",
+   "fieldname": "floor",
+   "fieldtype": "Link",
+   "label": "Floor",
+   "options": "Accommodation Floor",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bed.site",
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Accommodation Site",
+   "options": "Accommodation Site",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bed.location",
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Location",
+   "options": "Accommodation Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "change_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Changed On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "previous_status",
+   "fieldtype": "Data",
+   "label": "Previous Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "New Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Reason",
+   "options": "\nAllocation\nRelease\nTransfer In\nTransfer Out\nManual Update\nMaintenance\nBulk Setup",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_reference",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "allocation",
+   "fieldtype": "Link",
+   "label": "Allocation",
+   "options": "Accommodation Allocation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transfer",
+   "fieldtype": "Link",
+   "label": "Transfer",
+   "options": "Accommodation Transfer",
+   "read_only": 1
+  },
+  {
+   "fieldname": "changed_by",
+   "fieldtype": "Link",
+   "label": "Changed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-17 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Bed Status History",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Manager",
+   "share": 1
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accommodation Officer"
+  },
+  {
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "change_datetime",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
