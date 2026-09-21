@@ -16,6 +16,8 @@ MAINTENANCE_FIELDS = (
 	"floor",
 	"room",
 	"bed",
+	"set_bed_under_maintenance",
+	"set_room_under_maintenance",
 	"reported_by",
 	"reported_on",
 	"assigned_to",
@@ -97,6 +99,18 @@ def get_columns():
 			"fieldtype": "Link",
 			"options": "Accommodation Bed",
 			"width": 180,
+		},
+		{
+			"label": _("Bed Hold"),
+			"fieldname": "set_bed_under_maintenance",
+			"fieldtype": "Check",
+			"width": 90,
+		},
+		{
+			"label": _("Room Hold"),
+			"fieldname": "set_room_under_maintenance",
+			"fieldtype": "Check",
+			"width": 90,
 		},
 		{
 			"label": _("Reported By"),

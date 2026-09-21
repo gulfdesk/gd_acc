@@ -40,8 +40,11 @@ class AccommodationDashboard {
 
 		this.$container.on("click", "[data-card-index]", (event) => {
 			const card = this.cards[$(event.currentTarget).attr("data-card-index")];
-			if (card && card.route) {
-				frappe.set_route("List", card.route.doctype, card.route.filters || {});
+			if (card && card.route && card.route.view === "Report") {
+				// A Report Builder report opens by name and keeps its own saved filters.
+				frappe.set_route("List", card.route.doctype, "Report", card.route.filters);
+			} else if (card && card.route) {
+				frappe.set_route(card.route.view, card.route.doctype, card.route.filters || {});
 			}
 		});
 	}
@@ -104,25 +107,49 @@ class AccommodationDashboard {
 				...scope,
 				status: "Maintenance",
 			}),
+			this.card(__("Blocked"), kpi.blocked, "red", "Accommodation Bed", {
+				...scope,
+				status: "Blocked",
+			}),
 			this.card(__("Occupancy"), `${kpi.occupancy_percent || 0}%`, "purple"),
 		];
 
 		const people = [
-			this.card(__("Provided"), kpi.employees_provided, "green", "Employee", {
-				accommodation_status: "Provided",
+			this.card(__("Provided"), kpi.employees_provided, "green", "Accommodation Entitlement", {
+				status: "Active",
+				entitlement_type: "Company Accommodation",
 			}),
-			this.card(__("Allowance"), kpi.employees_allowance, "blue", "Employee", {
-				accommodation_status: "Allowance",
+			this.card(__("Allowance"), kpi.employees_allowance, "blue", "Accommodation Entitlement", {
+				status: "Active",
+				entitlement_type: "Allowance",
 			}),
-			this.card(__("Not Provided"), kpi.employees_not_provided, "gray", "Employee", {
-				accommodation_status: "Not Provided",
-			}),
+			this.card(
+				__("Not Provided"),
+				kpi.employees_not_provided,
+				"gray",
+				"Employee Accommodation",
+				{ accommodation_status: "Not Provided" },
+				"query-report"
+			),
 			this.card(
 				__("Open Maintenance Requests"),
 				kpi.open_maintenance_requests,
 				"orange",
 				"Accommodation Maintenance",
 				{ ...scope, status: ["in", ["Open", "In Progress"]] }
+			),
+			this.card(__("Pending Release"), kpi.pending_release, "orange", "Accommodation Allocation", {
+				...scope,
+				docstatus: 1,
+				status: "Pending Release",
+			}),
+			this.card(
+				__("Unhoused"),
+				kpi.awaiting_bed,
+				"orange",
+				"Accommodation Entitlement",
+				"Unhoused Employees",
+				"Report"
 			),
 		];
 
@@ -149,9 +176,9 @@ class AccommodationDashboard {
 	}
 
 	/** Build a KPI tile. Passing a doctype makes it open that filtered list. */
-	card(label, value, color, doctype, filters) {
+	card(label, value, color, doctype, filters, view = "List") {
 		const index = this.cards.length;
-		this.cards.push({ route: doctype ? { doctype, filters } : null });
+		this.cards.push({ route: doctype ? { view, doctype, filters } : null });
 
 		const clickable = doctype ? "is-clickable" : "";
 		const accent = color ? `style="border-left-color: var(--${color}-500)"` : "";

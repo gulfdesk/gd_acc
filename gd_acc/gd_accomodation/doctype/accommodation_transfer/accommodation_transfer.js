@@ -4,11 +4,24 @@
 frappe.ui.form.on("Accommodation Transfer", {
 	setup(frm) {
 		frm.set_query("current_allocation", () => ({
-			filters: { employee: frm.doc.employee, status: "Active", docstatus: 1 },
+			filters: {
+				employee: frm.doc.employee,
+				status: ["in", ["Active", "Pending Release"]],
+				docstatus: 1,
+			},
+		}));
+
+		// Only the employee's company can house the employee. The server checks it again on submit.
+		frm.set_query("to_location", () => ({
+			filters: { status: "Active", company: frm.doc.company },
 		}));
 
 		frm.set_query("to_site", () => ({
-			filters: { location: frm.doc.to_location, status: "Active" },
+			filters: {
+				location: frm.doc.to_location,
+				status: "Active",
+				gender_restriction: gender_restriction_filter(frm.doc.gender),
+			},
 		}));
 
 		frm.set_query("to_floor", () => ({
@@ -16,13 +29,22 @@ frappe.ui.form.on("Accommodation Transfer", {
 		}));
 
 		frm.set_query("to_room", () => ({
-			filters: { floor: frm.doc.to_floor, status: "Active" },
+			filters: {
+				floor: frm.doc.to_floor,
+				status: "Active",
+				gender_restriction: gender_restriction_filter(frm.doc.gender),
+			},
 		}));
 
 		// Custom query so the dropdown shows Single / Bunk Lower / Bunk Upper.
 		frm.set_query("to_bed", () => ({
 			query: "gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation.get_allocatable_beds",
-			filters: { room: frm.doc.to_room, floor: frm.doc.to_floor, site: frm.doc.to_site },
+			filters: {
+				room: frm.doc.to_room,
+				floor: frm.doc.to_floor,
+				site: frm.doc.to_site,
+				gender: frm.doc.gender || "",
+			},
 		}));
 	},
 
@@ -66,3 +88,8 @@ frappe.ui.form.on("Accommodation Transfer", {
 		frm.set_value({ to_bed: null });
 	},
 });
+
+// Places open to the employee's gender. An employee with no gender sees Any places only.
+function gender_restriction_filter(gender) {
+	return gender ? ["in", ["Any", gender]] : "Any";
+}

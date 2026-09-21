@@ -1,5 +1,5 @@
 {
- "add_total_row": 0,
+ "add_total_row": 1,
  "add_translate_data": 0,
  "columns": [],
  "creation": "2026-09-17 10:00:00.000000",
@@ -10,21 +10,21 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": null,
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
- "name": "Accommodation Asset Assignment Report",
+ "name": "Accommodation Item Report",
  "owner": "Administrator",
  "prepared_report": 0,
- "ref_doctype": "Accommodation Asset Assignment",
- "report_name": "Accommodation Asset Assignment Report",
+ "ref_doctype": "Accommodation Item Entry",
+ "report_name": "Accommodation Item Report",
  "report_type": "Script Report",
  "roles": [
   {
    "role": "Accommodation Manager"
   },
   {
-   "role": "Accommodation Officer"
+   "role": "Accommodation User"
   },
   {
    "role": "HR Manager"

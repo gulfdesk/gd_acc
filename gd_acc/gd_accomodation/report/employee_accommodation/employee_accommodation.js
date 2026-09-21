@@ -16,6 +16,12 @@ frappe.query_reports["Employee Accommodation"] = {
 			options: "\nProvided\nAllowance\nNot Provided",
 		},
 		{
+			fieldname: "stay_status",
+			label: __("Stay Status"),
+			fieldtype: "Select",
+			options: "\nAwaiting Bed\nAllocated\nVacated",
+		},
+		{
 			fieldname: "location",
 			label: __("Location"),
 			fieldtype: "Link",
@@ -69,6 +75,28 @@ frappe.query_reports["Employee Accommodation"] = {
 			value = `<span class="indicator-pill ${
 				status_colors[data.accommodation_status] || "gray"
 			}">${__(data.accommodation_status)}</span>`;
+		}
+
+		if (column.fieldname === "stay_status" && data && data.stay_status) {
+			const stay_colors = {
+				"Awaiting Bed": "orange",
+				Allocated: "green",
+				Vacated: "gray",
+			};
+			value = `<span class="indicator-pill ${stay_colors[data.stay_status] || "gray"}">${__(
+				data.stay_status
+			)}</span>`;
+		}
+
+		if (column.fieldname === "allocation_status" && data && data.allocation_status) {
+			const allocation_colors = {
+				Active: "green",
+				"Pending Release": "orange",
+				Closed: "blue",
+			};
+			value = `<span class="indicator-pill ${
+				allocation_colors[data.allocation_status] || "gray"
+			}">${__(data.allocation_status)}</span>`;
 		}
 
 		return value;

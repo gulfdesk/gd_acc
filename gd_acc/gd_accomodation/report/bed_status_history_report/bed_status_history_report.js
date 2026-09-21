@@ -55,7 +55,7 @@ frappe.query_reports["Bed Status History Report"] = {
 			fieldname: "reason",
 			label: __("Reason"),
 			fieldtype: "Select",
-			options: "\nAllocation\nRelease\nTransfer In\nTransfer Out\nManual Update\nMaintenance\nBulk Setup",
+			options: "\nAllocation\nRelease\nTransfer In\nTransfer Out\nManual Update\nMaintenance\nBulk Setup\nHold\nHold Released",
 		},
 	],
 
@@ -67,6 +67,7 @@ frappe.query_reports["Bed Status History Report"] = {
 			Occupied: "blue",
 			Reserved: "orange",
 			Maintenance: "red",
+			Blocked: "red",
 			Inactive: "gray",
 		};
 

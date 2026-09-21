@@ -17,6 +17,8 @@ ALLOCATION_FIELDS = (
 	"bed",
 	"start_date",
 	"release_date",
+	"proposed_release_date",
+	"pending_release_reason",
 	"status",
 	"release_reason",
 	"released_by_transfer",
@@ -104,6 +106,18 @@ def get_columns():
 			"width": 110,
 		},
 		{
+			"label": _("Proposed Release Date"),
+			"fieldname": "proposed_release_date",
+			"fieldtype": "Date",
+			"width": 120,
+		},
+		{
+			"label": _("Pending Release Reason"),
+			"fieldname": "pending_release_reason",
+			"fieldtype": "Data",
+			"width": 140,
+		},
+		{
 			"label": _("Duration (Days)"),
 			"fieldname": "duration_days",
 			"fieldtype": "Int",
@@ -113,7 +127,7 @@ def get_columns():
 			"label": _("Status"),
 			"fieldname": "status",
 			"fieldtype": "Data",
-			"width": 100,
+			"width": 120,
 		},
 		{
 			"label": _("Release Reason"),

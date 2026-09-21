@@ -12,11 +12,14 @@
   "employee_name",
   "company",
   "designation",
+  "gender",
   "column_break_basic",
   "status",
   "start_date",
   "expected_end_date",
   "release_date",
+  "proposed_release_date",
+  "pending_release_reason",
   "accommodation_section",
   "location",
   "site",
@@ -33,6 +36,14 @@
   "released_by_transfer",
   "column_break_release",
   "remarks",
+  "items_section",
+  "items",
+  "items_summary_section",
+  "item_entry",
+  "total_items",
+  "items_summary_column",
+  "outstanding_items",
+  "items_status",
   "amended_from"
  ],
  "fields": [
@@ -80,6 +91,14 @@
    "read_only": 1
   },
   {
+   "fetch_from": "employee.gender",
+   "fieldname": "gender",
+   "fieldtype": "Link",
+   "label": "Gender",
+   "options": "Gender",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_basic",
    "fieldtype": "Column Break"
   },
@@ -91,7 +110,7 @@
    "in_standard_filter": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Draft\nActive\nClosed\nCancelled",
+   "options": "Draft\nActive\nPending Release\nClosed\nCancelled",
    "read_only": 1,
    "search_index": 1
   },
@@ -113,6 +132,23 @@
    "fieldtype": "Date",
    "label": "Release Date",
    "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.status==\"Pending Release\"",
+   "fieldname": "proposed_release_date",
+   "fieldtype": "Date",
+   "label": "Proposed Release Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.status==\"Pending Release\"",
+   "fieldname": "pending_release_reason",
+   "fieldtype": "Select",
+   "label": "Pending Release Reason",
+   "no_copy": 1,
+   "options": "\nEntitlement Ended\nEmployee Left\nRelieving Date Set",
    "read_only": 1
   },
   {
@@ -224,6 +260,59 @@
    "label": "Remarks"
   },
   {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Items Issued"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Accommodation Allocation Item"
+  },
+  {
+   "fieldname": "items_summary_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "item_entry",
+   "fieldtype": "Link",
+   "label": "Assign Entry",
+   "no_copy": 1,
+   "options": "Accommodation Item Entry",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_items",
+   "fieldtype": "Int",
+   "label": "Total Qty",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_summary_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "outstanding_items",
+   "fieldtype": "Int",
+   "label": "Outstanding Qty",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Items Status",
+   "no_copy": 1,
+   "options": "\nOutstanding\nCleared",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -236,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Allocation",
@@ -259,45 +348,30 @@
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
+   "role": "Accommodation User",
    "share": 1,
    "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "role": "HR Manager"
   },
   {
-   "create": 1,
-   "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "role": "HR User"
   },
   {
    "print": 1,

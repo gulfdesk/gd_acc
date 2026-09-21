@@ -7,11 +7,13 @@ from frappe.model.document import Document
 from frappe.utils import flt, getdate
 
 from gd_acc.gd_accomodation.accommodation_utils import (
-	ENTITLEMENT_TO_EMPLOYEE_STATUS,
 	get_active_allocation,
-	get_active_entitlement,
 	sync_employee_accommodation,
 )
+from gd_acc.gd_accomodation.release_flow import handle_entitlement_update
+
+ENTITLEMENT_DOCTYPE = "Accommodation Entitlement"
+COMPANY_ACCOMMODATION = "Company Accommodation"
 
 
 class AccommodationEntitlement(Document):
@@ -19,48 +21,81 @@ class AccommodationEntitlement(Document):
 		if self.docstatus == 0:
 			self.status = "Draft"
 
-		self.set_replaced_records()
-		self.validate_dates()
+		self.validate_to_date()
+		self.validate_no_open_entitlement()
+		self.validate_not_housed()
+		self.set_previous_entitlement()
 		self.apply_allowance()
 
-	def set_replaced_records(self):
-		"""Work out what this entitlement supersedes.
+	def validate_to_date(self):
+		if self.to_date and getdate(self.to_date) < getdate(self.from_date):
+			frappe.throw(_("Effective To cannot be before Effective From."), title=_("Invalid Dates"))
 
-		An allocation only needs releasing when the employee is moving off
-		company accommodation; staying on it keeps the current room.
-		"""
-		self.previous_entitlement = get_active_entitlement(self.employee, exclude=self.name)
+	def get_other_active_entitlements(self):
+		return frappe.get_all(
+			ENTITLEMENT_DOCTYPE,
+			filters={
+				"employee": self.employee,
+				"docstatus": 1,
+				"status": "Active",
+				"name": ("!=", self.name),
+			},
+			fields=["name", "entitlement_type", "from_date", "to_date"],
+			order_by="from_date desc",
+		)
 
-		active_allocation = get_active_allocation(self.employee)
-		if active_allocation and self.entitlement_type != "Company Accommodation":
-			self.previous_allocation = active_allocation
-		else:
-			self.previous_allocation = None
-			self.release_date = None
+	def validate_no_open_entitlement(self):
+		"""Refuse the entitlement while another one is open on its From Date."""
+		from_date = getdate(self.from_date)
+		for row in self.get_other_active_entitlements():
+			if row.to_date and getdate(row.to_date) < from_date:
+				continue
 
-	def validate_dates(self):
-		if not self.previous_allocation:
-			return
-
-		if not self.release_date:
+			until = (
+				_("until {0}").format(frappe.format(row.to_date, {"fieldtype": "Date"}))
+				if row.to_date
+				else _("with no end date")
+			)
 			frappe.throw(
 				_(
-					"{0} is currently housed under allocation {1}. "
-					"Enter the Release Date so the stay is closed correctly and kept in history."
+					"{0} already holds entitlement {1} ({2}) from {3} {4}. "
+					"Set its Effective To before {5} first."
 				).format(
-					frappe.bold(self.employee_name or self.employee), frappe.bold(self.previous_allocation)
+					frappe.bold(self.employee_name or self.employee),
+					frappe.bold(row.name),
+					_(row.entitlement_type),
+					frappe.format(row.from_date, {"fieldtype": "Date"}),
+					until,
+					frappe.format(self.from_date, {"fieldtype": "Date"}),
 				),
-				title=_("Release Date Required"),
+				title=_("Open Entitlement"),
 			)
 
-		start_date = frappe.db.get_value("Accommodation Allocation", self.previous_allocation, "start_date")
-		if getdate(self.release_date) < getdate(start_date):
+	def validate_not_housed(self):
+		if self.entitlement_type == COMPANY_ACCOMMODATION:
+			return
+
+		allocation = get_active_allocation(self.employee)
+		if allocation:
 			frappe.throw(
-				_("Release Date cannot be before the allocation started on {0}.").format(
-					frappe.bold(start_date)
-				),
-				title=_("Invalid Dates"),
+				_(
+					"{0} is housed under allocation {1}. End the Company Accommodation entitlement "
+					"and release the stay first."
+				).format(frappe.bold(self.employee_name or self.employee), frappe.bold(allocation)),
+				title=_("Employee Housed"),
 			)
+
+	def set_previous_entitlement(self):
+		"""The latest Active entitlement that ends before this one starts."""
+		from_date = getdate(self.from_date)
+		self.previous_entitlement = next(
+			(
+				row.name
+				for row in self.get_other_active_entitlements()
+				if row.to_date and getdate(row.to_date) < from_date
+			),
+			None,
+		)
 
 	def apply_allowance(self):
 		if self.entitlement_type != "Allowance":
@@ -88,33 +123,57 @@ class AccommodationEntitlement(Document):
 			)
 
 	def on_submit(self):
-		self.close_previous_entitlement()
-		self.release_previous_allocation()
-
-		self.db_set("status", "Active")
-		sync_employee_accommodation(
-			self.employee,
-			accommodation_status=ENTITLEMENT_TO_EMPLOYEE_STATUS[self.entitlement_type],
-			entitlement=self.name,
+		self.close_superseded()
+		self.db_set(
+			{
+				"status": "Active",
+				"stay_status": "Awaiting Bed" if self.entitlement_type == COMPANY_ACCOMMODATION else None,
+			}
 		)
+		# Also refreshes the Stay Status from the allocations.
+		sync_employee_accommodation(self.employee, entitlement=self.name)
 
-	def close_previous_entitlement(self):
-		if not self.previous_entitlement:
+	def close_superseded(self):
+		"""Close each older Active entitlement that ends before this one starts. Its To Date stays."""
+		from_date = getdate(self.from_date)
+		for row in self.get_other_active_entitlements():
+			if row.to_date and getdate(row.to_date) < from_date:
+				frappe.db.set_value(ENTITLEMENT_DOCTYPE, row.name, "status", "Closed")
+
+	def before_update_after_submit(self):
+		self.validate_to_date()
+		self.validate_no_later_overlap()
+
+	def validate_no_later_overlap(self):
+		"""A later Active entitlement must still start after this one ends."""
+		later = frappe.get_all(
+			ENTITLEMENT_DOCTYPE,
+			filters={
+				"employee": self.employee,
+				"docstatus": 1,
+				"status": "Active",
+				"name": ("!=", self.name),
+				"from_date": (">", self.from_date),
+			},
+			fields=["name", "from_date"],
+			order_by="from_date asc",
+			limit=1,
+		)
+		if not later:
 			return
 
-		previous = frappe.get_doc("Accommodation Entitlement", self.previous_entitlement)
-		previous.db_set({"status": "Closed", "to_date": self.from_date})
+		later = later[0]
+		if not self.to_date or getdate(later.from_date) <= getdate(self.to_date):
+			frappe.throw(
+				_("Entitlement {0} starts on {1}. This one must end before it.").format(
+					frappe.bold(later.name), frappe.format(later.from_date, {"fieldtype": "Date"})
+				),
+				title=_("Overlap"),
+			)
 
-	def release_previous_allocation(self):
-		if not self.previous_allocation:
-			return
-
-		allocation = frappe.get_doc("Accommodation Allocation", self.previous_allocation)
-		allocation.release(
-			release_date=self.release_date,
-			reason=self.release_reason or "Accommodation Status Change",
-			remarks=_("Entitlement changed to {0} by {1}.").format(self.entitlement_type, self.name),
-		)
+	def on_update_after_submit(self):
+		sync_employee_accommodation(self.employee)
+		handle_entitlement_update(self)
 
 	def before_cancel(self):
 		if self.status == "Closed":
@@ -138,18 +197,13 @@ class AccommodationEntitlement(Document):
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
 
-		restored = None
-		if self.previous_entitlement:
-			previous = frappe.get_doc("Accommodation Entitlement", self.previous_entitlement)
-			previous.db_set({"status": "Active", "to_date": None})
-			restored = previous
+		if (
+			self.previous_entitlement
+			and frappe.db.get_value(ENTITLEMENT_DOCTYPE, self.previous_entitlement, "status") == "Closed"
+		):
+			frappe.db.set_value(ENTITLEMENT_DOCTYPE, self.previous_entitlement, "status", "Active")
 
-		status = ENTITLEMENT_TO_EMPLOYEE_STATUS[restored.entitlement_type] if restored else "Not Provided"
-		sync_employee_accommodation(
-			self.employee,
-			accommodation_status=status,
-			entitlement=restored.name if restored else None,
-		)
+		sync_employee_accommodation(self.employee)
 
 
 def get_payroll_allowance(employee, on_date, component):
@@ -225,18 +279,24 @@ def create_entitlement(
 ):
 	"""Single-save creation used by the Employee accommodation tab.
 
-	Company Accommodation also needs a bed, so this creates the Accommodation
-	Allocation first and the Entitlement second: if the bed turns out to be
-	unavailable the whole action fails before any entitlement is created, and
-	the caller only ever has to fill in and submit one form.
+	For Company Accommodation with a site, this also houses the employee: the
+	Accommodation Allocation is submitted first and the Entitlement second, in
+	one transaction. If the bed is not available, nothing is created. Without a
+	site, only the entitlement is created and it waits for a bed.
 	"""
 	if not frappe.has_permission("Accommodation Entitlement", "create"):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
 	new_allocation = None
-	if entitlement_type == "Company Accommodation":
+	if entitlement_type == COMPANY_ACCOMMODATION and site:
 		if not frappe.has_permission("Accommodation Allocation", "create"):
-			frappe.throw(_("Not permitted."), frappe.PermissionError)
+			frappe.throw(
+				_(
+					"You can create the entitlement, but not the allocation. Leave the accommodation "
+					"fields empty; an Accommodation User allocates the bed."
+				),
+				title=_("Not Permitted"),
+			)
 
 		allocation = frappe.new_doc("Accommodation Allocation")
 		allocation.update(
@@ -306,6 +366,8 @@ def get_employee_entitlement_state(employee):
 			"allowance_amount",
 			"allowance_currency",
 			"allowance_frequency",
+			"allowance_component",
+			"stay_status",
 			"release_date",
 		],
 		order_by="from_date desc, creation desc",
@@ -318,6 +380,7 @@ def get_employee_entitlement_state(employee):
 			"name",
 			"status",
 			"start_date",
+			"expected_end_date",
 			"release_date",
 			"location",
 			"site",
@@ -326,6 +389,8 @@ def get_employee_entitlement_state(employee):
 			"bed",
 			"bed_type",
 			"release_reason",
+			"proposed_release_date",
+			"pending_release_reason",
 		],
 		order_by="start_date desc, creation desc",
 	)

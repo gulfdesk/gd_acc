@@ -11,10 +11,17 @@
   "floor",
   "site",
   "location",
+  "gender_restriction",
   "column_break_basic",
   "room_type",
   "capacity",
   "status",
+  "occupancy_status",
+  "hold_section",
+  "is_blocked",
+  "hold_reason",
+  "column_break_hold",
+  "under_maintenance",
   "occupancy_section",
   "total_beds",
   "occupied_beds",
@@ -61,6 +68,16 @@
    "read_only": 1
   },
   {
+   "default": "Any",
+   "description": "Set on the Site.",
+   "fieldname": "gender_restriction",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Gender Restriction",
+   "options": "Any\nMale\nFemale",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_basic",
    "fieldtype": "Column Break"
   },
@@ -93,6 +110,50 @@
    "reqd": 1
   },
   {
+   "fieldname": "occupancy_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Occupancy Status",
+   "no_copy": 1,
+   "options": "\nAvailable\nFull\nBlocked\nUnder Maintenance",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "hold_section",
+   "fieldtype": "Section Break",
+   "label": "Hold"
+  },
+  {
+   "default": "0",
+   "description": "A Blocked room cannot be allocated. Its free beds become Blocked.",
+   "fieldname": "is_blocked",
+   "fieldtype": "Check",
+   "label": "Blocked"
+  },
+  {
+   "depends_on": "eval:doc.is_blocked",
+   "fieldname": "hold_reason",
+   "fieldtype": "Small Text",
+   "label": "Hold Reason",
+   "mandatory_depends_on": "eval:doc.is_blocked"
+  },
+  {
+   "fieldname": "column_break_hold",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Set while an open Accommodation Maintenance record holds this room.",
+   "fieldname": "under_maintenance",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Under Maintenance",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
    "fieldname": "occupancy_section",
    "fieldtype": "Section Break",
    "label": "Occupancy Summary"
@@ -108,7 +169,6 @@
   {
    "fieldname": "occupied_beds",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Occupied Beds",
    "read_only": 1
   },
@@ -154,7 +214,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Room",
@@ -174,15 +234,12 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
-   "share": 1,
-   "write": 1
+   "role": "Accommodation User"
   },
   {
    "email": 1,

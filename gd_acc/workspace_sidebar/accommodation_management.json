@@ -72,8 +72,8 @@
    "icon": "package",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Asset Assignment",
-   "link_to": "Accommodation Asset Assignment",
+   "label": "Accommodation Item Entry",
+   "link_to": "Accommodation Item Entry",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
@@ -227,8 +227,8 @@
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
-   "label": "Asset Assignment",
-   "link_to": "Accommodation Asset Assignment Report",
+   "label": "Accommodation Item Report",
+   "link_to": "Accommodation Item Report",
    "link_type": "Report",
    "show_arrow": 0,
    "type": "Link"
@@ -240,6 +240,39 @@
    "keep_closed": 0,
    "label": "Maintenance",
    "link_to": "Accommodation Maintenance Report",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Unhoused Employees",
+   "link_to": "Unhoused Employees",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Pending Releases",
+   "link_to": "Pending Releases",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Held Beds",
+   "link_to": "Held Beds",
    "link_type": "Report",
    "show_arrow": 0,
    "type": "Link"
@@ -301,7 +334,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-21 13:00:00.000000",
+ "modified": "2026-09-21 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Management",

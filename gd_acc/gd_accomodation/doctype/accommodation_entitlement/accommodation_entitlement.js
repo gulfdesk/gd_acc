@@ -1,12 +1,27 @@
 // Copyright (c) 2026, Rahmed-dev and contributors
 // For license information, please see license.txt
 
+const STAY_STATUS_COLORS = { "Awaiting Bed": "orange", Allocated: "green", Vacated: "gray" };
+
 frappe.ui.form.on("Accommodation Entitlement", {
 	refresh(frm) {
 		render_allocation_panel(frm);
 
+		if (frm.doc.docstatus === 1 && frm.doc.stay_status) {
+			frm.dashboard.add_indicator(
+				__("Stay Status: {0}", [__(frm.doc.stay_status)]),
+				STAY_STATUS_COLORS[frm.doc.stay_status] || "gray"
+			);
+		}
+
 		if (frm.doc.docstatus === 1 && frm.doc.status === "Active") {
-			if (frm.doc.entitlement_type === "Company Accommodation") {
+			frm.add_custom_button(__("End or Extend"), () => show_end_or_extend_dialog(frm));
+
+			if (
+				frm.doc.entitlement_type === "Company Accommodation" &&
+				frm.doc.stay_status !== "Allocated" &&
+				frappe.model.can_create("Accommodation Allocation")
+			) {
 				frm.add_custom_button(
 					__("Accommodation Allocation"),
 					() => {
@@ -38,6 +53,28 @@ frappe.ui.form.on("Accommodation Entitlement", {
 		fetch_allowance(frm, true);
 	},
 });
+
+/** HR ends or extends the entitlement by a change of its Effective To. */
+function show_end_or_extend_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("End or Extend"),
+		fields: [
+			{
+				fieldname: "to_date",
+				fieldtype: "Date",
+				label: __("Effective To"),
+				default: frm.doc.to_date,
+				description: __("Leave empty for an entitlement with no end date."),
+			},
+		],
+		primary_action_label: __("Save"),
+		primary_action(values) {
+			frm.set_value("to_date", values.to_date || null);
+			frm.save("Update").then(() => dialog.hide());
+		},
+	});
+	dialog.show();
+}
 
 /** Pull the housing allowance straight from the employee's salary structure. */
 function fetch_allowance(frm, force) {

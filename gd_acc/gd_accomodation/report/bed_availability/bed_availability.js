@@ -73,7 +73,7 @@ frappe.query_reports["Bed Availability"] = {
 			fieldname: "bed_status",
 			label: __("Bed Status"),
 			fieldtype: "Select",
-			options: "\nAvailable\nOccupied\nReserved\nMaintenance\nInactive",
+			options: "\nAvailable\nOccupied\nReserved\nMaintenance\nBlocked\nInactive",
 			default: "Available",
 		},
 		{
@@ -81,6 +81,12 @@ frappe.query_reports["Bed Availability"] = {
 			label: __("Bed Type"),
 			fieldtype: "Select",
 			options: "\nSingle\nBunk Lower\nBunk Upper\nDouble\nOther",
+		},
+		{
+			fieldname: "gender_restriction",
+			label: __("Gender Restriction"),
+			fieldtype: "Select",
+			options: "\nAny\nMale\nFemale",
 		},
 	],
 
@@ -93,6 +99,7 @@ frappe.query_reports["Bed Availability"] = {
 				Occupied: "blue",
 				Reserved: "orange",
 				Maintenance: "red",
+				Blocked: "red",
 				Inactive: "gray",
 			};
 			value = `<span class="indicator-pill ${status_colors[data.status] || "gray"}">${__(data.status)}</span>`;

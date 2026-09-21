@@ -33,6 +33,12 @@ def get_columns():
 			"width": 180,
 		},
 		{
+			"label": _("Room Status"),
+			"fieldname": "room_status",
+			"fieldtype": "Data",
+			"width": 120,
+		},
+		{
 			"label": _("Room Type"),
 			"fieldname": "room_type",
 			"fieldtype": "Data",
@@ -66,6 +72,24 @@ def get_columns():
 			"width": 110,
 		},
 		{
+			"label": _("Gender Restriction"),
+			"fieldname": "gender_restriction",
+			"fieldtype": "Data",
+			"width": 90,
+		},
+		{
+			"label": _("Under Maintenance"),
+			"fieldname": "under_maintenance",
+			"fieldtype": "Check",
+			"width": 90,
+		},
+		{
+			"label": _("Hold Reason"),
+			"fieldname": "hold_reason",
+			"fieldtype": "Data",
+			"width": 160,
+		},
+		{
 			"label": _("Bed Type"),
 			"fieldname": "bed_type",
 			"fieldtype": "Data",
@@ -97,15 +121,20 @@ def get_data(filters):
 			"site",
 			"location",
 			"status",
+			"gender_restriction",
+			"under_maintenance",
+			"hold_reason",
 			"bed_type",
 			"current_employee",
 		],
 		order_by="location asc, site asc, floor asc, room asc, bed_number asc",
 	)
 
-	room_types = get_room_types([bed.room for bed in beds if bed.room])
+	rooms = get_rooms([bed.room for bed in beds if bed.room])
 	for bed in beds:
-		bed.room_type = room_types.get(bed.room)
+		room = rooms.get(bed.room) or {}
+		bed.room_type = room.get("room_type")
+		bed.room_status = room.get("occupancy_status")
 
 	return beds
 
@@ -121,8 +150,9 @@ def get_bed_filters(filters):
 	if filters.get("bed_status"):
 		bed_filters["status"] = filters.bed_status
 
-	if filters.get("bed_type"):
-		bed_filters["bed_type"] = filters.bed_type
+	for fieldname in ("bed_type", "gender_restriction"):
+		if filters.get(fieldname):
+			bed_filters[fieldname] = filters.get(fieldname)
 
 	if filters.get("room_type"):
 		rooms = get_rooms_of_type(filters)
@@ -144,15 +174,15 @@ def get_rooms_of_type(filters):
 	return frappe.get_all("Accommodation Room", filters=room_filters, pluck="name")
 
 
-def get_room_types(rooms):
+def get_rooms(rooms):
 	if not rooms:
 		return {}
 
 	return {
-		room.name: room.room_type
+		room.name: room
 		for room in frappe.get_all(
 			"Accommodation Room",
 			filters={"name": ["in", list(set(rooms))]},
-			fields=["name", "room_type"],
+			fields=["name", "room_type", "occupancy_status"],
 		)
 	}

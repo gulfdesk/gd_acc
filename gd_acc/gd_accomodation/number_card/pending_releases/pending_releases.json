@@ -1,0 +1,22 @@
+{
+ "color": "#ECAD4B",
+ "creation": "2026-09-21 19:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Accommodation Allocation",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"Accommodation Allocation\", \"docstatus\", \"=\", 1, false], [\"Accommodation Allocation\", \"status\", \"=\", \"Pending Release\", false]]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Pending Releases",
+ "modified": "2026-09-21 19:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Pending Releases",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Monthly",
+ "type": "Document Type"
+}

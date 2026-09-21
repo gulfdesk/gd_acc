@@ -12,7 +12,7 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 	count_active_allocations,
 )
 
-BED_STATUSES = ("Available", "Occupied", "Reserved", "Maintenance", "Inactive")
+BED_STATUSES = ("Available", "Occupied", "Reserved", "Maintenance", "Blocked", "Inactive")
 
 
 @frappe.whitelist()
@@ -126,13 +126,25 @@ def get_dashboard_data(location=None, site=None):
 		"occupied": occupied,
 		"reserved": counts.get("Reserved", 0),
 		"maintenance": counts.get("Maintenance", 0),
+		"blocked": counts.get("Blocked", 0),
 		"inactive": counts.get("Inactive", 0),
 		"occupancy_percent": flt(occupied * 100.0 / total_beds, 2) if total_beds else 0,
-		"employees_provided": frappe.db.count("Employee", {"accommodation_status": "Provided"}),
-		"employees_allowance": frappe.db.count("Employee", {"accommodation_status": "Allowance"}),
-		"employees_not_provided": frappe.db.count("Employee", {"accommodation_status": "Not Provided"}),
+		**count_employees_by_entitlement(),
 		"open_maintenance_requests": frappe.db.count(
 			"Accommodation Maintenance", get_maintenance_filters(location, site)
+		),
+		"pending_release": frappe.db.count(
+			"Accommodation Allocation", {"docstatus": 1, "status": "Pending Release", **bed_filters}
+		),
+		# An entitlement has no location, so the location and site filters do not apply.
+		"awaiting_bed": frappe.db.count(
+			"Accommodation Entitlement",
+			{
+				"docstatus": 1,
+				"status": "Active",
+				"entitlement_type": "Company Accommodation",
+				"stay_status": ("in", ("Awaiting Bed", "Vacated")),
+			},
 		),
 	}
 
@@ -142,6 +154,29 @@ def get_dashboard_data(location=None, site=None):
 		"by_site": get_occupancy_breakdown("site", bed_filters),
 		"by_site_type": get_site_type_breakdown(bed_filters),
 		"open_maintenance": get_open_maintenance(location, site),
+	}
+
+
+def count_employees_by_entitlement():
+	"""Active employees by the type of their current entitlement. No entitlement counts as Not Provided."""
+	rows = frappe.db.sql(
+		"""
+		select e.entitlement_type, count(distinct e.employee) as total
+		from `tabAccommodation Entitlement` e
+		join `tabEmployee` emp on emp.name = e.employee
+		where e.docstatus = 1 and e.status = 'Active' and emp.status = 'Active'
+		group by e.entitlement_type
+		""",
+		as_dict=True,
+	)
+	counts = {row.entitlement_type: row.total for row in rows}
+	provided = counts.get("Company Accommodation", 0)
+	allowance = counts.get("Allowance", 0)
+
+	return {
+		"employees_provided": provided,
+		"employees_allowance": allowance,
+		"employees_not_provided": frappe.db.count("Employee", {"status": "Active"}) - provided - allowance,
 	}
 
 

@@ -23,6 +23,7 @@
   "room",
   "bed",
   "set_bed_under_maintenance",
+  "set_room_under_maintenance",
   "details_section",
   "description",
   "assignment_section",
@@ -144,10 +145,18 @@
   {
    "default": "0",
    "depends_on": "eval:doc.bed",
-   "description": "Sets the bed to Maintenance while this request is open, and back to Available when it is resolved. Only possible when the bed is not currently occupied.",
+   "description": "Sets a free bed to Maintenance while this request is open, and back to Available when it closes. An occupied bed keeps its employee and is flagged Under Maintenance.",
    "fieldname": "set_bed_under_maintenance",
    "fieldtype": "Check",
    "label": "Set Bed Under Maintenance"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.room && !doc.bed",
+   "description": "Holds every free and occupied bed of the room while this request is open. The employees stay.",
+   "fieldname": "set_room_under_maintenance",
+   "fieldtype": "Check",
+   "label": "Set Room Under Maintenance"
   },
   {
    "fieldname": "details_section",
@@ -217,7 +226,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Maintenance",
@@ -243,38 +252,29 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
+   "role": "Accommodation User",
    "share": 1,
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Maintenance User",
-   "share": 1,
-   "write": 1
+   "role": "HR Manager"
   },
   {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "HR Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
   },
   {
    "create": 1,

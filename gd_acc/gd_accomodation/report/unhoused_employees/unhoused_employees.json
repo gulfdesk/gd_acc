@@ -1,0 +1,44 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2026-09-21 19:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "{\"filters\": [[\"Accommodation Entitlement\", \"docstatus\", \"=\", 1], [\"Accommodation Entitlement\", \"status\", \"=\", \"Active\"], [\"Accommodation Entitlement\", \"entitlement_type\", \"=\", \"Company Accommodation\"], [\"Accommodation Entitlement\", \"stay_status\", \"in\", [\"Awaiting Bed\", \"Vacated\"]]], \"fields\": [[\"name\", \"Accommodation Entitlement\"], [\"employee\", \"Accommodation Entitlement\"], [\"employee_name\", \"Accommodation Entitlement\"], [\"company\", \"Accommodation Entitlement\"], [\"from_date\", \"Accommodation Entitlement\"], [\"to_date\", \"Accommodation Entitlement\"], [\"stay_status\", \"Accommodation Entitlement\"]], \"order_by\": \"`tabAccommodation Entitlement`.`from_date` asc\", \"add_total_row\": 0}",
+ "letter_head": null,
+ "modified": "2026-09-21 19:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Unhoused Employees",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Accommodation Entitlement",
+ "report_name": "Unhoused Employees",
+ "report_type": "Report Builder",
+ "roles": [
+  {
+   "role": "Accommodation Manager"
+  },
+  {
+   "role": "Accommodation User"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Maintenance User"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "timeout": 0
+}

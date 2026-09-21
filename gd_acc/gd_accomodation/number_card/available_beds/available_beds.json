@@ -1,0 +1,22 @@
+{
+ "color": "#29CD42",
+ "creation": "2026-09-21 19:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Accommodation Bed",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"Accommodation Bed\", \"status\", \"=\", \"Available\", false]]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Available Beds",
+ "modified": "2026-09-21 19:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Available Beds",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Monthly",
+ "type": "Document Type"
+}

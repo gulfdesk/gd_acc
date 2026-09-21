@@ -43,7 +43,7 @@ frappe.query_reports["Accommodation History"] = {
 			fieldname: "allocation_status",
 			label: __("Allocation Status"),
 			fieldtype: "Select",
-			options: "\nActive\nClosed",
+			options: "\nActive\nPending Release\nClosed",
 		},
 	],
 
@@ -54,6 +54,7 @@ frappe.query_reports["Accommodation History"] = {
 			const status_colors = {
 				Draft: "gray",
 				Active: "green",
+				"Pending Release": "orange",
 				Closed: "blue",
 			};
 			value = `<span class="indicator-pill ${status_colors[data.status] || "gray"}">${__(data.status)}</span>`;

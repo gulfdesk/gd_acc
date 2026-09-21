@@ -6,6 +6,10 @@ from frappe import _
 from frappe.model.document import Document
 
 from gd_acc.gd_accomodation.accommodation_utils import (
+	BED_STATUS_AVAILABLE,
+	BED_STATUS_BLOCKED,
+	BED_STATUS_MAINTENANCE,
+	get_site_gender,
 	log_bed_status_change,
 	update_room_occupancy,
 )
@@ -13,6 +17,7 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 
 class AccommodationBed(Document):
 	def validate(self):
+		self.gender_restriction = get_site_gender(self.site)
 		self.validate_room_capacity()
 		self.validate_status_change()
 		self.validate_room_change()
@@ -39,6 +44,9 @@ class AccommodationBed(Document):
 					_("A bed cannot be created as Occupied. Submit an Accommodation Allocation instead."),
 					title=_("Not Allowed"),
 				)
+			if self.status == BED_STATUS_MAINTENANCE:
+				throw_manual_maintenance()
+			self.apply_room_hold()
 			return
 
 		if before.status == self.status:
@@ -60,6 +68,52 @@ class AccommodationBed(Document):
 				title=_("Bed Occupied"),
 			)
 
+		# update_bed_state writes with db_set, so a Maintenance record never reaches this check.
+		if BED_STATUS_MAINTENANCE in (self.status, before.status):
+			throw_manual_maintenance()
+
+		if self.status == BED_STATUS_BLOCKED and self.under_maintenance:
+			frappe.throw(
+				_("Bed {0} is under maintenance. Block it after the maintenance closes.").format(
+					frappe.bold(self.name)
+				),
+				title=_("Bed Under Maintenance"),
+			)
+
+		if before.status == BED_STATUS_BLOCKED:
+			self.hold_reason = None
+			self.held_by_room = 0
+
+	def apply_room_hold(self):
+		"""A new Available bed takes the hold of its room."""
+		if self.status != BED_STATUS_AVAILABLE or not self.room:
+			return
+
+		room = frappe.db.get_value(
+			"Accommodation Room", self.room, ["is_blocked", "hold_reason", "under_maintenance"], as_dict=True
+		)
+		if not room:
+			return
+
+		if room.is_blocked:
+			self.status = BED_STATUS_BLOCKED
+			self.held_by_room = 1
+			self.hold_reason = room.hold_reason
+		elif room.under_maintenance:
+			record = frappe.db.get_value(
+				"Accommodation Maintenance",
+				{
+					"room": self.room,
+					"bed": ("is", "not set"),
+					"set_room_under_maintenance": 1,
+					"status": ("in", ("Open", "In Progress")),
+				},
+				"name",
+			)
+			self.status = BED_STATUS_MAINTENANCE
+			self.under_maintenance = 1
+			self.hold_reason = _("Maintenance {0}").format(record) if record else None
+
 	def validate_room_change(self):
 		before = self.get_doc_before_save()
 		if not before or before.room == self.room:
@@ -72,11 +126,18 @@ class AccommodationBed(Document):
 		before = self.get_doc_before_save()
 
 		if before and before.status != self.status:
+			if self.status == BED_STATUS_BLOCKED:
+				reason = "Hold"
+			elif before.status == BED_STATUS_BLOCKED:
+				reason = "Hold Released"
+			else:
+				reason = "Manual Update"
+
 			log_bed_status_change(
 				bed=self.name,
 				previous_status=before.status,
 				new_status=self.status,
-				reason="Manual Update",
+				reason=reason,
 				remarks=self.remarks,
 			)
 
@@ -104,3 +165,10 @@ class AccommodationBed(Document):
 
 	def after_delete(self):
 		update_room_occupancy(self.room)
+
+
+def throw_manual_maintenance():
+	frappe.throw(
+		_("A bed shows Maintenance only through an Accommodation Maintenance record."),
+		title=_("Not Allowed"),
+	)

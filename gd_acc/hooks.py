@@ -147,9 +147,8 @@ after_migrate = "gd_acc.gd_accomodation.setup.setup_accommodation"
 
 doc_events = {
 	"Employee": {
-		"validate": "gd_acc.gd_accomodation.employee_hooks.validate_accommodation_status",
-		"on_update": "gd_acc.gd_accomodation.employee_hooks.handle_accommodation_status_change",
-	}
+		"on_update": "gd_acc.gd_accomodation.release_flow.handle_employee_update",
+	},
 }
 
 # Scheduled Tasks

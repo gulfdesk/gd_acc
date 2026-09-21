@@ -10,7 +10,7 @@ disturbing anything an administrator has changed afterwards.
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
-ACCOMMODATION_ROLES = ("Accommodation Manager", "Accommodation Officer", "Maintenance User")
+ACCOMMODATION_ROLES = ("Accommodation Manager", "Accommodation User", "Maintenance User")
 
 EMPLOYEE_CUSTOM_FIELDS = {
 	"Employee": [
@@ -21,30 +21,13 @@ EMPLOYEE_CUSTOM_FIELDS = {
 			"insert_after": "old_parent",
 		},
 		{
-			"fieldname": "accommodation_status",
-			"fieldtype": "Select",
-			"label": "Accommodation Status",
-			"options": "Not Provided\nProvided\nAllowance",
-			# Not Provided is the baseline every employee starts at, not a
-			# decision someone made. Provided/Allowance only ever come from
-			# a submitted Accommodation Entitlement.
-			"default": "Not Provided",
-			"in_standard_filter": 1,
-			"read_only": 1,
-			"description": (
-				"Derived from the employee's active Accommodation Entitlement. "
-				"Use Create Entitlement below to change it."
-			),
-			"insert_after": "accommodation_tab",
-		},
-		{
 			"fieldname": "current_accommodation_entitlement",
 			"fieldtype": "Link",
 			"label": "Current Entitlement",
 			"options": "Accommodation Entitlement",
 			"read_only": 1,
 			"no_copy": 1,
-			"insert_after": "accommodation_status",
+			"insert_after": "accommodation_tab",
 		},
 		{
 			"fieldname": "accommodation_actions_html",
@@ -56,7 +39,7 @@ EMPLOYEE_CUSTOM_FIELDS = {
 			"fieldname": "current_accommodation_section",
 			"fieldtype": "Section Break",
 			"label": "Current Accommodation",
-			"depends_on": 'eval:doc.accommodation_status == "Provided"',
+			"depends_on": "eval:doc.current_accommodation_allocation",
 			"insert_after": "accommodation_actions_html",
 		},
 		{
@@ -153,69 +136,10 @@ EMPLOYEE_CUSTOM_FIELDS = {
 			"insert_after": "accommodation_start_date",
 		},
 		{
-			"fieldname": "accommodation_allowance_section",
-			"fieldtype": "Section Break",
-			"label": "Accommodation Allowance",
-			"depends_on": 'eval:doc.accommodation_status == "Allowance"',
-			"insert_after": "accommodation_expected_end_date",
-		},
-		{
-			"fieldname": "accommodation_allowance_type",
-			"read_only": 1,
-			"fieldtype": "Select",
-			"label": "Allowance Type",
-			"options": "\nMonthly\nQuarterly\nAnnual\nOne Time",
-			"insert_after": "accommodation_allowance_section",
-		},
-		{
-			"fieldname": "accommodation_allowance_amount",
-			"read_only": 1,
-			"fieldtype": "Currency",
-			"label": "Allowance Amount",
-			"options": "accommodation_allowance_currency",
-			"insert_after": "accommodation_allowance_type",
-		},
-		{
-			"fieldname": "accommodation_allowance_currency",
-			"read_only": 1,
-			"fieldtype": "Link",
-			"label": "Currency",
-			"options": "Currency",
-			"insert_after": "accommodation_allowance_amount",
-		},
-		{
-			"fieldname": "accommodation_allowance_column",
-			"fieldtype": "Column Break",
-			"insert_after": "accommodation_allowance_currency",
-		},
-		{
-			"fieldname": "accommodation_allowance_from_date",
-			"read_only": 1,
-			"fieldtype": "Date",
-			"label": "Effective From",
-			"insert_after": "accommodation_allowance_column",
-		},
-		{
-			"fieldname": "accommodation_allowance_to_date",
-			"read_only": 1,
-			"fieldtype": "Date",
-			"label": "Effective To",
-			"insert_after": "accommodation_allowance_from_date",
-		},
-		{
-			"fieldname": "accommodation_allowance_component",
-			"read_only": 1,
-			"fieldtype": "Link",
-			"label": "Payroll Salary Component",
-			"options": "Salary Component",
-			"description": "Salary component used to pay this allowance, where payroll is configured.",
-			"insert_after": "accommodation_allowance_to_date",
-		},
-		{
 			"fieldname": "accommodation_history_section",
 			"fieldtype": "Section Break",
 			"label": "Accommodation History",
-			"insert_after": "accommodation_allowance_component",
+			"insert_after": "accommodation_expected_end_date",
 		},
 		{
 			"fieldname": "accommodation_history_html",
@@ -230,7 +154,6 @@ EMPLOYEE_CUSTOM_FIELDS = {
 def setup_accommodation():
 	create_accommodation_roles()
 	create_custom_fields(EMPLOYEE_CUSTOM_FIELDS, ignore_validate=True, update=True)
-	backfill_default_accommodation_status()
 
 
 def create_accommodation_roles():
@@ -243,18 +166,3 @@ def create_accommodation_roles():
 		role.flags.ignore_permissions = True
 		role.insert()
 
-
-def backfill_default_accommodation_status():
-	"""Give every employee the Not Provided baseline until a real decision is made.
-
-	Not Provided is the default state, not a decision someone made - it just
-	means nobody has assigned company accommodation or an allowance yet.
-	Runs on every migrate, so it is safe and self healing.
-	"""
-	frappe.db.sql(
-		"""
-		update `tabEmployee`
-		set accommodation_status = 'Not Provided'
-		where ifnull(accommodation_status, '') = ''
-		"""
-	)

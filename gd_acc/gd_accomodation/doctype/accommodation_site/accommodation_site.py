@@ -5,7 +5,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from gd_acc.gd_accomodation.accommodation_utils import generate_master_code
+from gd_acc.gd_accomodation.accommodation_utils import (
+	CURRENT_STAY_STATUSES,
+	GENDER_ANY,
+	generate_master_code,
+)
+
+# The places below a site that keep a copy of its Gender Restriction.
+GENDER_COPY_DOCTYPES = ("Accommodation Floor", "Accommodation Room", "Accommodation Bed")
 
 
 class AccommodationSite(Document):
@@ -18,6 +25,7 @@ class AccommodationSite(Document):
 			self.sub_type = None
 
 		self.validate_bed_allocation_change()
+		self.validate_gender_change()
 
 	def validate_bed_allocation_change(self):
 		"""Bed level allocation cannot be switched off while beds are occupied."""
@@ -36,6 +44,39 @@ class AccommodationSite(Document):
 				),
 				title=_("Beds Occupied"),
 			)
+
+	def validate_gender_change(self):
+		"""A site cannot be restricted while an employee of another gender lives there."""
+		if self.is_new() or self.gender_restriction == GENDER_ANY:
+			return
+		if not self.has_value_changed("gender_restriction"):
+			return
+
+		others = frappe.db.sql(
+			"""
+			SELECT COUNT(*)
+			FROM `tabAccommodation Allocation` a
+			JOIN `tabEmployee` e ON e.name = a.employee
+			WHERE a.site = %s AND a.docstatus = 1 AND a.status IN %s
+				AND IFNULL(e.gender, '') != %s
+			""",
+			(self.name, CURRENT_STAY_STATUSES, self.gender_restriction),
+		)[0][0]
+		if others:
+			frappe.throw(
+				_("{0} employee(s) who are not {1} live at {2}. Move them before you restrict the site.").format(
+					others, _(self.gender_restriction), frappe.bold(self.name)
+				),
+				title=_("Gender Restriction"),
+			)
+
+	def on_update(self):
+		if self.has_value_changed("gender_restriction"):
+			for doctype in GENDER_COPY_DOCTYPES:
+				frappe.db.sql(
+					f"UPDATE `tab{doctype}` SET gender_restriction = %s WHERE site = %s",
+					(self.gender_restriction, self.name),
+				)
 
 	def on_trash(self):
 		floors = frappe.db.count("Accommodation Floor", {"site": self.name})

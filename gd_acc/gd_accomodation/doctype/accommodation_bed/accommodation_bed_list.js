@@ -9,6 +9,7 @@ frappe.listview_settings["Accommodation Bed"] = {
 			Occupied: "blue",
 			Reserved: "orange",
 			Maintenance: "yellow",
+			Blocked: "red",
 			Inactive: "gray",
 		};
 		return [__(doc.status), colors[doc.status] || "gray", `status,=,${doc.status}`];
