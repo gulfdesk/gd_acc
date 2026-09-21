@@ -11,7 +11,7 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 	generate_master_code,
 )
 
-# The places below a site that keep a copy of its Gender Restriction.
+# The places below a site that keep a copy of its Gender Restriction and Company.
 GENDER_COPY_DOCTYPES = ("Accommodation Floor", "Accommodation Room", "Accommodation Bed")
 
 
@@ -71,11 +71,13 @@ class AccommodationSite(Document):
 			)
 
 	def on_update(self):
-		if self.has_value_changed("gender_restriction"):
+		for fieldname in ("gender_restriction", "company"):
+			if not self.has_value_changed(fieldname):
+				continue
 			for doctype in GENDER_COPY_DOCTYPES:
 				frappe.db.sql(
-					f"UPDATE `tab{doctype}` SET gender_restriction = %s WHERE site = %s",
-					(self.gender_restriction, self.name),
+					f"UPDATE `tab{doctype}` SET `{fieldname}` = %s WHERE site = %s",
+					(self.get(fieldname), self.name),
 				)
 
 	def on_trash(self):

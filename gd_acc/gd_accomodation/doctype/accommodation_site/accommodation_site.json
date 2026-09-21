@@ -10,6 +10,7 @@
   "site_name",
   "site_code",
   "location",
+  "company",
   "status",
   "column_break_basic",
   "accommodation_type",
@@ -57,6 +58,16 @@
    "label": "Location",
    "options": "Accommodation Location",
    "reqd": 1
+  },
+  {
+   "fetch_from": "location.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "description": "Copied from the Location."
   },
   {
    "default": "Active",
@@ -183,7 +194,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 14:00:00.000000",
+ "modified": "2026-09-21 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Site",

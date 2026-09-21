@@ -35,6 +35,7 @@ def make_bulk_setup(site, floors):
 		{
 			"doctype": "Accommodation Bulk Setup",
 			"site": site.name,
+			"generate_scope": "Floors, Rooms and Beds",
 			"floors": floors,
 		}
 	)
