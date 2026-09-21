@@ -9,9 +9,6 @@ from gd_acc.gd_accomodation.accommodation_utils import update_floor_occupancy
 
 
 class AccommodationFloor(Document):
-	def validate(self):
-		self.location = frappe.db.get_value("Accommodation Site", self.site, "location")
-
 	def on_update(self):
 		update_floor_occupancy(self.name)
 

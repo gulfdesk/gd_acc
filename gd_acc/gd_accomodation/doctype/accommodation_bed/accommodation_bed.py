@@ -7,18 +7,12 @@ from frappe.model.document import Document
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	log_bed_status_change,
-	resolve_hierarchy,
 	update_room_occupancy,
 )
 
 
 class AccommodationBed(Document):
 	def validate(self):
-		resolved = resolve_hierarchy(room=self.room)
-		self.floor = resolved["floor"]
-		self.site = resolved["site"]
-		self.location = resolved["location"]
-
 		self.validate_room_capacity()
 		self.validate_status_change()
 		self.validate_room_change()

@@ -4,7 +4,7 @@
 import re
 
 import frappe
-from frappe.model.naming import make_autoname
+from frappe.model.naming import NamingSeries, make_autoname
 from frappe.utils import cint
 
 from gd_acc.gd_accomodation.accommodation_utils import MASTER_CODE_SERIES
@@ -37,7 +37,7 @@ def backfill(doctype, fieldname, series):
 
 	# Always reserve first: codes may already exist even when none are pending,
 	# and a counter left behind them would hand out a duplicate on the next save.
-	reserve_series(prefix, highest)
+	reserve_series(series, highest)
 
 	if not pending:
 		return
@@ -46,13 +46,11 @@ def backfill(doctype, fieldname, series):
 		frappe.db.set_value(doctype, name, fieldname, make_autoname(series), update_modified=False)
 
 
-def reserve_series(prefix, highest):
+def reserve_series(series, highest):
 	"""Move the counter past codes that already exist so nothing collides."""
 	if not highest:
 		return
 
-	current = frappe.db.sql("select `current` from `tabSeries` where name = %s", prefix)
-	if not current:
-		frappe.db.sql("insert into `tabSeries` (name, `current`) values (%s, %s)", (prefix, highest))
-	elif cint(current[0][0]) < highest:
-		frappe.db.sql("update `tabSeries` set `current` = %s where name = %s", (highest, prefix))
+	naming_series = NamingSeries(series)
+	if naming_series.get_current_value() < highest:
+		naming_series.update_counter(highest)

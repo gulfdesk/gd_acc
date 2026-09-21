@@ -216,6 +216,8 @@ def get_allocatable_beds(doctype, txt, searchfield, start, page_len, filters):
 	Lets whoever is assigning see at a glance whether they are giving out a
 	single bed, a bunk lower or a bunk upper.
 	"""
+	frappe.has_permission("Accommodation Bed", "read", throw=True)
+
 	conditions = {"status": "Available"}
 	for key in ("room", "floor", "site", "location"):
 		if filters and filters.get(key):

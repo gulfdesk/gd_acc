@@ -5,15 +5,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from gd_acc.gd_accomodation.accommodation_utils import resolve_hierarchy, update_room_occupancy
+from gd_acc.gd_accomodation.accommodation_utils import update_room_occupancy
 
 
 class AccommodationRoom(Document):
 	def validate(self):
-		resolved = resolve_hierarchy(floor=self.floor)
-		self.site = resolved["site"]
-		self.location = resolved["location"]
-
 		self.validate_capacity()
 
 	def validate_capacity(self):
