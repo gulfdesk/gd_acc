@@ -157,25 +157,27 @@ frappe.ui.form.on("Accommodation Item Entry", {
 		}
 
 		frappe.db
-			.get_value("Employee", frm.doc.employee, [
-				"current_accommodation_location",
-				"current_accommodation_site",
-				"current_accommodation_floor",
-				"current_accommodation_room",
-				"current_accommodation_bed",
-			])
+			.get_value(
+				"Accommodation Allocation",
+				{
+					employee: frm.doc.employee,
+					docstatus: 1,
+					status: ["in", ["Active", "Pending Release"]],
+				},
+				["location", "site", "floor", "room", "bed"]
+			)
 			.then((response) => {
 				const current = response.message || {};
-				if (!current.current_accommodation_location) {
+				if (!current.location) {
 					return;
 				}
 
 				set_holder(frm, {
-					location: current.current_accommodation_location,
-					site: current.current_accommodation_site,
-					floor: current.current_accommodation_floor,
-					room: current.current_accommodation_room,
-					bed: current.current_accommodation_bed,
+					location: current.location,
+					site: current.site,
+					floor: current.floor,
+					room: current.room,
+					bed: current.bed,
 				});
 			});
 	},

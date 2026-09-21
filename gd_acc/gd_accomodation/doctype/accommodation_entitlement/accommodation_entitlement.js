@@ -1,16 +1,24 @@
 // Copyright (c) 2026, Rahmed-dev and contributors
 // For license information, please see license.txt
 
-const STAY_STATUS_COLORS = { "Awaiting Bed": "orange", Allocated: "green", Vacated: "gray" };
-
 frappe.ui.form.on("Accommodation Entitlement", {
+	setup(frm) {
+		frm.set_query("salary_structure_assignment", () => ({
+			filters: { employee: frm.doc.employee, docstatus: 1 },
+		}));
+		frm.set_query("allowance_component", () => ({
+			query: "gd_acc.gd_accomodation.doctype.accommodation_entitlement.accommodation_entitlement.get_assignment_components",
+			filters: { salary_structure_assignment: frm.doc.salary_structure_assignment },
+		}));
+	},
+
 	refresh(frm) {
 		render_allocation_panel(frm);
 
 		if (frm.doc.docstatus === 1 && frm.doc.stay_status) {
 			frm.dashboard.add_indicator(
 				__("Stay Status: {0}", [__(frm.doc.stay_status)]),
-				STAY_STATUS_COLORS[frm.doc.stay_status] || "gray"
+				gd_acc.accommodation.status_color("Accommodation Entitlement", "stay_status", frm.doc.stay_status)
 			);
 		}
 
@@ -49,6 +57,10 @@ frappe.ui.form.on("Accommodation Entitlement", {
 		}
 	},
 
+	salary_structure_assignment(frm) {
+		frm.set_value("allowance_component", null);
+	},
+
 	allowance_component(frm) {
 		fetch_allowance(frm, true);
 	},
@@ -76,7 +88,7 @@ function show_end_or_extend_dialog(frm) {
 	dialog.show();
 }
 
-/** Pull the housing allowance straight from the employee's salary structure. */
+/** Pull the housing allowance from the employee's latest salary slip. */
 function fetch_allowance(frm, force) {
 	if (!frm.doc.employee || !frm.doc.from_date) {
 		return;
@@ -88,11 +100,12 @@ function fetch_allowance(frm, force) {
 			employee: frm.doc.employee,
 			on_date: frm.doc.from_date,
 			component: frm.doc.allowance_component || null,
+			salary_structure_assignment: frm.doc.salary_structure_assignment || null,
 		},
 		callback(response) {
 			const details = response.message || {};
-			if (details.component && !frm.doc.allowance_component) {
-				frm.set_value("allowance_component", details.component);
+			if (details.salary_structure_assignment && !frm.doc.salary_structure_assignment) {
+				frm.set_value("salary_structure_assignment", details.salary_structure_assignment);
 			}
 			frm.set_value("salary_structure", details.salary_structure || null);
 			frm.set_value("allowance_source", details.source || null);

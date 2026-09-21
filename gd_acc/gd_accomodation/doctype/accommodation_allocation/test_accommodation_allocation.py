@@ -5,6 +5,14 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
+from gd_acc.gd_accomodation.accommodation_utils import get_active_allocation
+
+
+def current_stay_value(employee, fieldname):
+	"""A field of the employee's current allocation, or None when the employee has no bed."""
+	allocation = get_active_allocation(employee)
+	return allocation and frappe.db.get_value("Accommodation Allocation", allocation, fieldname)
+
 
 def get_test_company():
 	company = frappe.db.get_value("Company", {}, "name")
@@ -174,9 +182,9 @@ class TestAccommodationAllocation(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_allocation, allocation.name)
-		self.assertEqual(employee.current_accommodation_bed, structure.bed.name)
-		self.assertEqual(employee.current_accommodation_site, structure.site.name)
+		self.assertEqual(get_active_allocation(employee.name), allocation.name)
+		self.assertEqual(current_stay_value(employee.name, "bed"), structure.bed.name)
+		self.assertEqual(current_stay_value(employee.name, "site"), structure.site.name)
 
 		room = frappe.get_doc("Accommodation Room", structure.room.name)
 		self.assertEqual(room.occupied_beds, 1)
@@ -212,7 +220,7 @@ class TestAccommodationAllocation(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Not Provided")
-		self.assertIsNone(employee.current_accommodation_allocation)
+		self.assertIsNone(get_active_allocation(employee.name))
 
 	def test_released_bed_is_reusable_and_both_histories_survive(self):
 		structure = make_structure()
@@ -384,7 +392,7 @@ class TestAccommodationAllocation(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_site, structure.site.name)
+		self.assertEqual(current_stay_value(employee.name, "site"), structure.site.name)
 
 	def test_status_change_to_not_provided_releases_allocation(self):
 		structure = make_structure()
@@ -404,7 +412,7 @@ class TestAccommodationAllocation(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Not Provided")
-		self.assertIsNone(employee.current_accommodation_allocation)
+		self.assertIsNone(get_active_allocation(employee.name))
 
 	def test_status_change_to_allowance_releases_allocation(self):
 		structure = make_structure()
@@ -423,7 +431,7 @@ class TestAccommodationAllocation(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Allowance")
-		self.assertIsNone(employee.current_accommodation_bed)
+		self.assertIsNone(current_stay_value(employee.name, "bed"))
 		self.assertEqual(employee.accommodation_allowance_amount, 1500)
 		self.assertEqual(str(employee.accommodation_allowance_from_date), today())
 

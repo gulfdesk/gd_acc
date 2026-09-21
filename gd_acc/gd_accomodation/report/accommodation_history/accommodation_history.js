@@ -50,14 +50,8 @@ frappe.query_reports["Accommodation History"] = {
 	formatter: function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
-		if (column.fieldname === "status" && data && data.status) {
-			const status_colors = {
-				Draft: "gray",
-				Active: "green",
-				"Pending Release": "orange",
-				Closed: "blue",
-			};
-			value = `<span class="indicator-pill ${status_colors[data.status] || "gray"}">${__(data.status)}</span>`;
+		if (column.fieldname === "status" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Allocation", "status", data.status);
 		}
 
 		return value;

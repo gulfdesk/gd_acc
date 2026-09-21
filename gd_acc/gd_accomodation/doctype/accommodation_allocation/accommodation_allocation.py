@@ -14,9 +14,9 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 	get_active_allocation,
 	occupy_bed,
 	release_bed,
+	refresh_stay_status,
 	resolve_hierarchy,
 	site_requires_bed,
-	sync_employee_accommodation,
 	validate_placement,
 )
 from gd_acc.gd_accomodation.doctype.accommodation_item_entry.accommodation_item_entry import (
@@ -163,7 +163,7 @@ class AccommodationAllocation(Document):
 		if self.items:
 			self.issue_items()
 
-		sync_employee_accommodation(self.employee)
+		refresh_stay_status(self.employee)
 
 	def issue_items(self):
 		"""Create and submit the Assign entry for the Items table, in this transaction."""
@@ -227,7 +227,7 @@ class AccommodationAllocation(Document):
 
 		self.db_set({"status": "Cancelled", "release_date": None, "release_reason": None})
 
-		sync_employee_accommodation(self.employee)
+		refresh_stay_status(self.employee)
 
 	def cancel_item_entry(self):
 		"""Cancel the Assign entry that this allocation created."""
@@ -295,7 +295,7 @@ class AccommodationAllocation(Document):
 				remarks=remarks,
 			)
 
-		sync_employee_accommodation(self.employee)
+		refresh_stay_status(self.employee)
 
 		if item_returns:
 			self.return_items(item_returns, release_date, request_id=request_id, remarks=remarks)

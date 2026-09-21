@@ -63,9 +63,17 @@ frappe.ui.form.on("Accommodation Transfer", {
 		}
 
 		frappe.db
-			.get_value("Employee", frm.doc.employee, "current_accommodation_allocation")
+			.get_value(
+				"Accommodation Allocation",
+				{
+					employee: frm.doc.employee,
+					docstatus: 1,
+					status: ["in", ["Active", "Pending Release"]],
+				},
+				"name"
+			)
 			.then((response) => {
-				const allocation = response.message && response.message.current_accommodation_allocation;
+				const allocation = response.message && response.message.name;
 				if (allocation) {
 					frm.set_value("current_allocation", allocation);
 				}

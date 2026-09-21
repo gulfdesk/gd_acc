@@ -248,9 +248,6 @@ class AccommodationDashboard {
 				<div class="text-muted no-data">${__("No open maintenance requests.")}</div>`;
 		}
 
-		const priority_colors = { Urgent: "red", High: "orange", Medium: "blue", Low: "gray" };
-		const status_colors = { Open: "orange", "In Progress": "blue" };
-
 		const body = rows
 			.map(
 				(row) => `
@@ -260,14 +257,10 @@ class AccommodationDashboard {
 				)}">${frappe.utils.escape_html(row.name)}</a></td>
 				<td>${frappe.utils.escape_html(row.subject || "")}</td>
 				<td>${frappe.utils.escape_html(row.issue_type || "")}</td>
-				<td><span class="indicator-pill ${priority_colors[row.priority] || "gray"}">${frappe.utils.escape_html(
-					row.priority || ""
-				)}</span></td>
+				<td>${gd_acc.accommodation.status_pill("Accommodation Maintenance", "priority", row.priority)}</td>
 				<td>${frappe.utils.escape_html(row.site || "")}</td>
 				<td>${frappe.utils.escape_html(row.room || row.bed || "")}</td>
-				<td><span class="indicator-pill ${status_colors[row.status] || "gray"}">${frappe.utils.escape_html(
-					row.status || ""
-				)}</span></td>
+				<td>${gd_acc.accommodation.status_pill("Accommodation Maintenance", "status", row.status)}</td>
 				<td>${row.reported_on ? frappe.datetime.str_to_user(row.reported_on) : ""}</td>
 			</tr>`
 			)

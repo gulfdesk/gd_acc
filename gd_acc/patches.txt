@@ -18,3 +18,4 @@ gd_acc.patches.v16_0.set_gender_restriction
 gd_acc.patches.v16_0.remove_employee_accommodation_status
 gd_acc.patches.v16_0.set_room_occupancy_status
 gd_acc.patches.v16_0.set_hierarchy_company
+gd_acc.patches.v16_0.remove_employee_accommodation_fields

@@ -59,19 +59,6 @@ HIERARCHY_LEVELS = (
 	("Accommodation Room", "room", "Room"),
 )
 
-EMPLOYEE_CURRENT_FIELDS = (
-	"current_accommodation_allocation",
-	"current_accommodation_location",
-	"current_accommodation_site",
-	"current_accommodation_type",
-	"current_accommodation_sub_type",
-	"current_accommodation_floor",
-	"current_accommodation_room",
-	"current_accommodation_bed",
-	"accommodation_start_date",
-	"accommodation_expected_end_date",
-)
-
 
 def generate_master_code(doctype):
 	"""Next code in this master's series, for example LOC-0001."""
@@ -622,55 +609,3 @@ def update_location_occupancy(location):
 		},
 		update_modified=False,
 	)
-
-
-def sync_employee_accommodation(employee, entitlement=None):
-	"""Rewrite the employee's current accommodation fields from the active allocation.
-
-	These Employee fields are a projection of the allocation, never an
-	independent record, so they are always rebuilt rather than patched.
-	"""
-	if not employee or not frappe.db.exists("Employee", employee):
-		return
-
-	allocation = get_active_allocation(employee)
-	values = dict.fromkeys(EMPLOYEE_CURRENT_FIELDS)
-
-	if allocation:
-		row = frappe.db.get_value(
-			"Accommodation Allocation",
-			allocation,
-			[
-				"location",
-				"site",
-				"accommodation_type",
-				"sub_type",
-				"floor",
-				"room",
-				"bed",
-				"start_date",
-				"expected_end_date",
-			],
-			as_dict=True,
-		)
-		values.update(
-			{
-				"current_accommodation_allocation": allocation,
-				"current_accommodation_location": row.location,
-				"current_accommodation_site": row.site,
-				"current_accommodation_type": row.accommodation_type,
-				"current_accommodation_sub_type": row.sub_type,
-				"current_accommodation_floor": row.floor,
-				"current_accommodation_room": row.room,
-				"current_accommodation_bed": row.bed,
-				"accommodation_start_date": row.start_date,
-				"accommodation_expected_end_date": row.expected_end_date,
-			}
-		)
-
-	# Passed explicitly when an entitlement drives the change, otherwise the
-	# employee's current entitlement is simply re-derived.
-	values["current_accommodation_entitlement"] = entitlement or get_active_entitlement(employee)
-
-	frappe.db.set_value("Employee", employee, values, update_modified=False)
-	refresh_stay_status(employee)

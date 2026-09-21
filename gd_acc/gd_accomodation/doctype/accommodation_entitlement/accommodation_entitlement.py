@@ -8,7 +8,7 @@ from frappe.utils import flt, getdate
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	get_active_allocation,
-	sync_employee_accommodation,
+	refresh_stay_status,
 )
 from gd_acc.gd_accomodation.release_flow import handle_entitlement_update
 
@@ -101,16 +101,15 @@ class AccommodationEntitlement(Document):
 		if self.entitlement_type != "Allowance":
 			self.allowance_component = None
 			self.allowance_amount = 0
+			self.salary_structure_assignment = None
 			self.salary_structure = None
 			self.allowance_source = None
 			return
 
-		if not self.allowance_component:
-			self.allowance_component = frappe.db.get_single_value(
-				"GD Acc Settings", "accommodation_allowance_component"
-			)
-
-		payroll = get_payroll_allowance(self.employee, self.from_date, self.allowance_component)
+		payroll = get_payroll_allowance(
+			self.employee, self.from_date, self.allowance_component, self.salary_structure_assignment
+		)
+		self.salary_structure_assignment = payroll.get("salary_structure_assignment")
 		self.salary_structure = payroll.get("salary_structure")
 		self.allowance_source = payroll.get("source")
 
@@ -130,8 +129,7 @@ class AccommodationEntitlement(Document):
 				"stay_status": "Awaiting Bed" if self.entitlement_type == COMPANY_ACCOMMODATION else None,
 			}
 		)
-		# Also refreshes the Stay Status from the allocations.
-		sync_employee_accommodation(self.employee, entitlement=self.name)
+		refresh_stay_status(self.employee)
 
 	def close_superseded(self):
 		"""Close each older Active entitlement that ends before this one starts. Its To Date stays."""
@@ -172,7 +170,7 @@ class AccommodationEntitlement(Document):
 			)
 
 	def on_update_after_submit(self):
-		sync_employee_accommodation(self.employee)
+		refresh_stay_status(self.employee)
 		handle_entitlement_update(self)
 
 	def before_cancel(self):
@@ -203,61 +201,119 @@ class AccommodationEntitlement(Document):
 		):
 			frappe.db.set_value(ENTITLEMENT_DOCTYPE, self.previous_entitlement, "status", "Active")
 
-		sync_employee_accommodation(self.employee)
+		refresh_stay_status(self.employee)
 
 
-def get_payroll_allowance(employee, on_date, component):
-	"""Read the accommodation allowance from the employee's salary structure."""
-	result = {"amount": 0, "salary_structure": None, "currency": None, "source": None}
+def get_payroll_allowance(employee, on_date, component, assignment=None):
+	"""Read the accommodation allowance from the employee's payroll.
 
-	if not component:
-		result["source"] = _("No accommodation allowance component is set in GD Acc Settings.")
-		return result
+	The assignment names the salary structure that HR picks the component from.
+	The amount comes from the latest submitted salary slip of the employee.
+	"""
+	result = {
+		"amount": 0,
+		"salary_structure_assignment": None,
+		"salary_structure": None,
+		"currency": None,
+		"source": None,
+	}
 
-	assignment = frappe.get_all(
-		"Salary Structure Assignment",
-		filters={"employee": employee, "docstatus": 1, "from_date": ("<=", getdate(on_date))},
-		fields=["name", "salary_structure", "from_date", "currency"],
-		order_by="from_date desc",
-		limit=1,
-	)
+	assignment = get_salary_structure_assignment(employee, on_date, assignment)
 	if not assignment:
 		result["source"] = _("No submitted Salary Structure Assignment found for this employee.")
 		return result
 
-	assignment = assignment[0]
+	result["salary_structure_assignment"] = assignment.name
 	result["salary_structure"] = assignment.salary_structure
 	result["currency"] = assignment.currency
 
-	rows = frappe.get_all(
+	if not component:
+		result["source"] = _("Select the salary component that pays the accommodation allowance.")
+		return result
+
+	slip = frappe.get_all(
+		"Salary Slip",
+		filters={"employee": employee, "docstatus": 1},
+		fields=["name", "start_date", "end_date", "currency"],
+		order_by="end_date desc, creation desc",
+		limit=1,
+	)
+	if not slip:
+		result["source"] = _("No submitted Salary Slip found for this employee.")
+		return result
+
+	slip = slip[0]
+	result["currency"] = slip.currency or result["currency"]
+
+	amounts = frappe.get_all(
 		"Salary Detail",
 		filters={
-			"parent": assignment.salary_structure,
-			"parenttype": "Salary Structure",
+			"parent": slip.name,
+			"parenttype": "Salary Slip",
 			"parentfield": "earnings",
 			"salary_component": component,
 		},
-		fields=["amount", "amount_based_on_formula", "formula"],
+		pluck="amount",
 	)
-	if not rows:
-		result["source"] = _("{0} is not an earning in salary structure {1}.").format(
-			component, assignment.salary_structure
-		)
+	if not amounts:
+		result["source"] = _("{0} is not an earning on salary slip {1}.").format(component, slip.name)
 		return result
 
-	row = rows[0]
-	result["amount"] = flt(row.amount)
-
-	if row.amount_based_on_formula and not flt(row.amount):
-		result["source"] = _(
-			"{0} in {1} is calculated by the formula '{2}'. Enter the amount manually."
-		).format(component, assignment.salary_structure, row.formula)
-	else:
-		result["source"] = _("{0} in salary structure {1}, effective {2}.").format(
-			component, assignment.salary_structure, assignment.from_date
-		)
-
+	result["amount"] = sum(flt(amount) for amount in amounts)
+	result["source"] = _("{0} on salary slip {1}, {2} to {3}.").format(
+		component,
+		slip.name,
+		frappe.format(slip.start_date, "Date"),
+		frappe.format(slip.end_date, "Date"),
+	)
 	return result
+
+
+def get_salary_structure_assignment(employee, on_date, assignment=None):
+	"""The chosen assignment, or the latest submitted one on or before the date."""
+	filters = {"employee": employee, "docstatus": 1}
+	if assignment:
+		filters["name"] = assignment
+	else:
+		filters["from_date"] = ("<=", getdate(on_date))
+
+	rows = frappe.get_all(
+		"Salary Structure Assignment",
+		filters=filters,
+		fields=["name", "salary_structure", "currency"],
+		order_by="from_date desc",
+		limit=1,
+	)
+	return rows[0] if rows else None
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_assignment_components(doctype, txt, searchfield, start, page_len, filters):
+	"""Earning components of the salary structure behind the chosen assignment."""
+	assignment = (filters or {}).get("salary_structure_assignment")
+	if not assignment:
+		return []
+
+	salary_structure = frappe.db.get_value("Salary Structure Assignment", assignment, "salary_structure")
+	if not salary_structure:
+		return []
+
+	return frappe.get_all(
+		"Salary Detail",
+		filters={
+			"parent": salary_structure,
+			"parenttype": "Salary Structure",
+			"parentfield": "earnings",
+			"salary_component": ("like", f"%{txt}%"),
+		},
+		fields=["salary_component"],
+		distinct=True,
+		order_by="salary_component",
+		limit_start=start,
+		limit_page_length=page_len,
+		as_list=True,
+	)
 
 
 @frappe.whitelist()
@@ -275,6 +331,7 @@ def create_entitlement(
 	allowance_component=None,
 	allowance_currency=None,
 	allowance_frequency=None,
+	salary_structure_assignment=None,
 	remarks=None,
 ):
 	"""Single-save creation used by the Employee accommodation tab.
@@ -325,6 +382,7 @@ def create_entitlement(
 			"allowance_component": allowance_component,
 			"allowance_currency": allowance_currency,
 			"allowance_frequency": allowance_frequency or "Monthly",
+			"salary_structure_assignment": salary_structure_assignment,
 			"remarks": remarks,
 		}
 	)
@@ -335,17 +393,12 @@ def create_entitlement(
 
 
 @frappe.whitelist()
-def fetch_allowance_details(employee, on_date, component=None):
+def fetch_allowance_details(employee, on_date, component=None, salary_structure_assignment=None):
 	"""Called from the form so the user can pull payroll figures on demand."""
 	if not frappe.has_permission("Accommodation Entitlement", "read"):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	component = component or frappe.db.get_single_value(
-		"GD Acc Settings", "accommodation_allowance_component"
-	)
-	details = get_payroll_allowance(employee, on_date, component)
-	details["component"] = component
-	return details
+	return get_payroll_allowance(employee, on_date, component, salary_structure_assignment)
 
 
 @frappe.whitelist()
@@ -396,10 +449,44 @@ def get_employee_entitlement_state(employee):
 	)
 
 	active = next((row for row in entitlements if row.status == "Active"), None)
+	active_allocation = get_active_allocation(employee)
+	set_place_labels(allocations)
 
 	return {
 		"entitlement": active,
 		"entitlements": entitlements,
 		"allocations": allocations,
-		"active_allocation": get_active_allocation(employee),
+		"active_allocation": active_allocation,
+		"place": next((row.place for row in allocations if row.name == active_allocation), {}),
 	}
+
+
+# Allocation field, the DocType it links to, and that DocType's short name field.
+PLACE_LABEL_FIELDS = (
+	("site", "Accommodation Site", "site_name"),
+	("floor", "Accommodation Floor", "floor_name"),
+	("room", "Accommodation Room", "room_number"),
+	("bed", "Accommodation Bed", "bed_number"),
+)
+
+
+def set_place_labels(allocations):
+	"""Give each allocation a place dict of short names, for example Floor 1 in place of A - Site 1 - Floor 1."""
+	labels = {}
+	for fieldname, doctype, label_field in PLACE_LABEL_FIELDS:
+		names = list({row.get(fieldname) for row in allocations if row.get(fieldname)})
+		labels[fieldname] = (
+			dict(
+				frappe.get_all(
+					doctype, filters={"name": ("in", names)}, fields=["name", label_field], as_list=True
+				)
+			)
+			if names
+			else {}
+		)
+
+	for row in allocations:
+		row.place = {"location": row.location}
+		for fieldname, _doctype, _label_field in PLACE_LABEL_FIELDS:
+			value = row.get(fieldname)
+			row.place[fieldname] = value and (labels[fieldname].get(value) or value)

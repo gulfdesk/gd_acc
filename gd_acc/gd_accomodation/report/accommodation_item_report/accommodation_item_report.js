@@ -73,11 +73,8 @@ frappe.query_reports["Accommodation Item Report"] = {
 			return value;
 		}
 
-		if (column.fieldname === "items_status" && data.items_status) {
-			const status_colors = { Outstanding: "orange", Cleared: "green" };
-			value = `<span class="indicator-pill ${status_colors[data.items_status] || "gray"}">${__(
-				data.items_status
-			)}</span>`;
+		if (column.fieldname === "items_status" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Item Entry", "items_status", data.items_status);
 		}
 
 		if (column.fieldname === "outstanding_quantity" && data.outstanding_quantity > 0) {

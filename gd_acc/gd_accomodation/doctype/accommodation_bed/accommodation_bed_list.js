@@ -4,14 +4,7 @@
 frappe.listview_settings["Accommodation Bed"] = {
 	add_fields: ["status", "current_employee_name"],
 	get_indicator(doc) {
-		const colors = {
-			Available: "green",
-			Occupied: "blue",
-			Reserved: "orange",
-			Maintenance: "yellow",
-			Blocked: "red",
-			Inactive: "gray",
-		};
-		return [__(doc.status), colors[doc.status] || "gray", `status,=,${doc.status}`];
+		const color = gd_acc.accommodation.status_color("Accommodation Bed", "status", doc.status);
+		return [__(doc.status), color, `status,=,${doc.status}`];
 	},
 };

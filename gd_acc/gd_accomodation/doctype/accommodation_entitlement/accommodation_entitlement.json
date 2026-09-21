@@ -25,6 +25,7 @@
   "release_date",
   "release_reason",
   "allowance_section",
+  "salary_structure_assignment",
   "allowance_component",
   "allowance_amount",
   "allowance_currency",
@@ -192,14 +193,21 @@
    "label": "Accommodation Allowance"
   },
   {
-   "description": "Payroll component this allowance is paid through. Defaults from GD Acc Settings.",
+   "description": "Defaults to the employee's latest submitted assignment.",
+   "fieldname": "salary_structure_assignment",
+   "fieldtype": "Link",
+   "label": "Salary Structure Assignment",
+   "options": "Salary Structure Assignment"
+  },
+  {
+   "description": "HR selects the accommodation allowance earning from the salary structure. There is no default.",
    "fieldname": "allowance_component",
    "fieldtype": "Link",
    "label": "Salary Component",
    "options": "Salary Component"
   },
   {
-   "description": "Pulled from the employee's active salary structure. Override only if payroll differs.",
+   "description": "Pulled from the employee's latest submitted salary slip.",
    "fieldname": "allowance_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -272,7 +280,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-21 15:00:00.000000",
+ "modified": "2026-09-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Entitlement",

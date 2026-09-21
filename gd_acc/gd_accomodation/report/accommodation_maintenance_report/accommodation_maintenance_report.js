@@ -57,27 +57,12 @@ frappe.query_reports["Accommodation Maintenance Report"] = {
 	formatter: function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
-		if (column.fieldname === "status" && data && data.status) {
-			const status_colors = {
-				Open: "red",
-				"In Progress": "orange",
-				Resolved: "green",
-				Closed: "blue",
-				Cancelled: "gray",
-			};
-			value = `<span class="indicator-pill ${status_colors[data.status] || "gray"}">${__(data.status)}</span>`;
+		if (column.fieldname === "status" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Maintenance", "status", data.status);
 		}
 
-		if (column.fieldname === "priority" && data && data.priority) {
-			const priority_colors = {
-				Low: "gray",
-				Medium: "blue",
-				High: "orange",
-				Urgent: "red",
-			};
-			value = `<span class="indicator-pill ${priority_colors[data.priority] || "gray"}">${__(
-				data.priority
-			)}</span>`;
+		if (column.fieldname === "priority" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Maintenance", "priority", data.priority);
 		}
 
 		return value;

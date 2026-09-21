@@ -62,19 +62,8 @@ frappe.query_reports["Bed Status History Report"] = {
 	formatter: function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
-		const status_colors = {
-			Available: "green",
-			Occupied: "blue",
-			Reserved: "orange",
-			Maintenance: "red",
-			Blocked: "red",
-			Inactive: "gray",
-		};
-
-		if (column.fieldname === "new_status" && data && data.new_status) {
-			value = `<span class="indicator-pill ${status_colors[data.new_status] || "gray"}">${__(
-				data.new_status
-			)}</span>`;
+		if (column.fieldname === "new_status" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Bed", "status", data.new_status);
 		}
 
 		return value;
