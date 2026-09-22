@@ -53,3 +53,12 @@ jspm_packages/
 
 # Aider AI Chat
 .aider*
+
+# fb-* pipeline state
+.fb/
+
+# fc-* requirements state
+.fc/
+
+# Generated documentation (BRD, exports)
+docs/

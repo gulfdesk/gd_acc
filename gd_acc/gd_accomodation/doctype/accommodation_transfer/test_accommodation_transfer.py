@@ -5,7 +5,9 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import today
 
+from gd_acc.gd_accomodation.accommodation_utils import get_active_allocation
 from gd_acc.gd_accomodation.doctype.accommodation_allocation.test_accommodation_allocation import (
+	current_stay_value,
 	make_allocation,
 	make_employee,
 	make_structure,
@@ -63,8 +65,8 @@ class TestAccommodationTransfer(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_allocation, new_allocation.name)
-		self.assertEqual(employee.current_accommodation_bed, destination.bed.name)
+		self.assertEqual(get_active_allocation(employee.name), new_allocation.name)
+		self.assertEqual(current_stay_value(employee.name, "bed"), destination.bed.name)
 
 	def test_transfer_preserves_both_stays(self):
 		origin = make_structure()

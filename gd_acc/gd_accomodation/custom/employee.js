@@ -1,6 +1,9 @@
 // Copyright (c) 2026, Rahmed-dev and contributors
 // For license information, please see license.txt
 
+// A history table shows this many rows. More rows scroll.
+const HISTORY_VISIBLE_ROWS = 5;
+
 frappe.ui.form.on("Employee", {
 	refresh(frm) {
 		if (frm.is_new()) {
@@ -11,9 +14,8 @@ frappe.ui.form.on("Employee", {
 });
 
 function render_accommodation_tab(frm) {
-	const actions = frm.get_field("accommodation_actions_html");
-	const history = frm.get_field("accommodation_history_html");
-	if (!actions && !history) {
+	const panel = frm.get_field("accommodation_html");
+	if (!panel) {
 		return;
 	}
 
@@ -22,109 +24,132 @@ function render_accommodation_tab(frm) {
 		args: { employee: frm.doc.name },
 		callback(response) {
 			const state = response.message || {};
-			if (actions) {
-				actions.$wrapper.html(build_actions(state));
-				wire_actions(frm, actions.$wrapper, state);
-			}
-			if (history) {
-				history.$wrapper.html(build_history(state));
-			}
+			panel.$wrapper.html(`${accommodation_styles()}${build_summary(state)}${build_history(state)}`);
+			add_accommodation_buttons(frm, state);
 		},
 	});
 }
 
-/* ---------------------------------------------------------------- actions */
+/* ---------------------------------------------------------------- summary */
 
-/**
- * The tab shows exactly one primary action at a time, decided by whether the
- * employee currently occupies a bed - not by whether an Entitlement document
- * happens to exist. A bed allocated directly from the Accommodation module,
- * with no Entitlement behind it, still counts as "provided" here.
- */
-function build_actions(state) {
-	const has_bed = !!state.active_allocation;
+/** The current entitlement and place, as label and value pairs in two columns. */
+function build_summary(state) {
 	const entitlement = state.entitlement;
-	const current_stay = has_bed
+	const current_stay = state.active_allocation
 		? (state.allocations || []).find((row) => row.name === state.active_allocation)
 		: null;
 
-	let summary;
-	if (has_bed) {
-		const place = current_stay
-			? [current_stay.location, current_stay.site, current_stay.floor, current_stay.room, current_stay.bed]
-					.filter(Boolean)
-					.map((value) => frappe.utils.escape_html(value))
-					.join(" <span class='acc-sep'>&rsaquo;</span> ")
-			: "";
-		const since = current_stay
-			? __("Since {0}", [frappe.datetime.str_to_user(current_stay.start_date)])
-			: "";
-		summary = `
-			<div class="acc-banner green">
-				<div class="acc-banner-title">${__("Company Accommodation")}</div>
-				<div class="acc-banner-sub">${place}${place && since ? " &middot; " : ""}${since}</div>
-			</div>`;
-	} else if (entitlement && entitlement.entitlement_type === "Allowance") {
-		const amount = entitlement.allowance_amount
-			? format_currency(entitlement.allowance_amount, entitlement.allowance_currency)
-			: __("Amount not set");
-		summary = `
-			<div class="acc-banner blue">
-				<div class="acc-banner-title">${__("Accommodation Allowance")}</div>
-				<div class="acc-banner-sub">${amount} ${
-					entitlement.allowance_frequency ? __(entitlement.allowance_frequency) : ""
-				} &middot; ${__("since {0}", [frappe.datetime.str_to_user(entitlement.from_date)])}</div>
-			</div>`;
+	const rows = [];
+	if (entitlement) {
+		rows.push([__("Entitlement"), `${__(entitlement.entitlement_type)} ${stay_pill(entitlement)}`]);
+		rows.push([__("Effective"), period(entitlement.from_date, entitlement.to_date)]);
 	} else {
-		summary = `
-			<div class="acc-banner gray">
-				<div class="acc-banner-title">${__("Not Provided")}</div>
-				<div class="acc-banner-sub">${__(
-					"Neither company accommodation nor an accommodation allowance is provided."
-				)}</div>
-			</div>`;
+		rows.push([__("Entitlement"), current_stay ? __("No entitlement recorded") : __("Not Provided")]);
 	}
 
-	let buttons;
-	if (has_bed) {
-		buttons = [
-			`<button class="btn btn-primary btn-sm" data-action="release">${__("Release Accommodation")}</button>`,
-			`<button class="btn btn-default btn-sm" data-action="transfer">${__("Transfer")}</button>`,
-			`<button class="btn btn-default btn-sm" data-action="view">${__("View Allocation")}</button>`,
-		];
-	} else if (entitlement && entitlement.entitlement_type === "Allowance") {
-		buttons = [
-			`<button class="btn btn-primary btn-sm" data-action="entitlement" data-prefill="Company Accommodation">${__(
-				"Switch to Company Accommodation"
-			)}</button>`,
-		];
-	} else {
-		buttons = [
-			`<button class="btn btn-primary btn-sm" data-action="entitlement">${__("Create Entitlement")}</button>`,
-		];
+	if (entitlement && entitlement.entitlement_type === "Allowance") {
+		rows.push([
+			__("Amount"),
+			entitlement.allowance_amount
+				? format_currency(entitlement.allowance_amount, entitlement.allowance_currency)
+				: __("Amount not set"),
+		]);
+		rows.push([__("Salary Component"), escape(entitlement.allowance_component)]);
 	}
 
-	return `${accommodation_styles()}${summary}<div class="acc-actions">${buttons.join("")}</div>`;
+	if (current_stay) {
+		const place = state.place || {};
+		rows.push([__("Location"), escape(place.location)]);
+		rows.push([__("Site"), escape(place.site)]);
+		rows.push([__("Floor"), escape(place.floor)]);
+		rows.push([__("Room"), escape(place.room)]);
+		rows.push([__("Bed"), escape(place.bed)]);
+		rows.push([__("Since"), frappe.datetime.str_to_user(current_stay.start_date)]);
+		if (current_stay.status === "Pending Release") {
+			rows.push([
+				__("Pending Release"),
+				`${frappe.datetime.str_to_user(current_stay.proposed_release_date)} (${escape(
+					__(current_stay.pending_release_reason || "")
+				)})`,
+			]);
+		}
+	}
+
+	const cells = rows
+		.map(
+			([label, value]) => `
+			<div class="col-sm-6">
+				<div class="frappe-control">
+					<div class="control-label">${label}</div>
+					<div class="control-value like-disabled-input">${value || ""}</div>
+				</div>
+			</div>`
+		)
+		.join("");
+	return `<div class="row">${cells}</div>`;
 }
 
-function wire_actions(frm, $wrapper, state) {
-	$wrapper.find("[data-action]").on("click", function () {
-		const action = $(this).attr("data-action");
+function stay_pill(entitlement) {
+	if (entitlement.entitlement_type !== "Company Accommodation") {
+		return "";
+	}
+	return gd_acc.accommodation.status_pill("Accommodation Entitlement", "stay_status", entitlement.stay_status);
+}
 
-		if (action === "entitlement") {
-			open_entitlement_dialog(frm, { prefill_type: $(this).attr("data-prefill") });
-		} else if (action === "transfer") {
-			frappe.new_doc("Accommodation Transfer", {
-				employee: frm.doc.name,
-				current_allocation: state.active_allocation,
-				transfer_date: frappe.datetime.get_today(),
-			});
-		} else if (action === "view") {
-			frappe.set_route("Form", "Accommodation Allocation", state.active_allocation);
-		} else if (action === "release") {
-			release_dialog(frm, state.active_allocation);
-		}
-	});
+/**
+ * The actions sit in one Accommodation group in the form header. They depend on
+ * whether the employee currently occupies a bed - not on whether an Entitlement
+ * document happens to exist.
+ */
+function add_accommodation_buttons(frm, state) {
+	const group = __("Accommodation");
+	for (const label of [
+		__("Create Entitlement"),
+		__("Switch to Company Accommodation"),
+		__("Release Accommodation"),
+		__("Transfer"),
+		__("View Allocation"),
+	]) {
+		frm.remove_custom_button(label, group);
+	}
+
+	const allocation = state.active_allocation;
+	const entitlement = state.entitlement;
+
+	if (allocation) {
+		frm.add_custom_button(
+			__("Release Accommodation"),
+			() => {
+				// The allocation form opens its release dialog, with the item returns, on arrival.
+				frappe.flags.gd_acc_open_release = allocation;
+				frappe.set_route("Form", "Accommodation Allocation", allocation);
+			},
+			group
+		);
+		frm.add_custom_button(
+			__("Transfer"),
+			() =>
+				frappe.new_doc("Accommodation Transfer", {
+					employee: frm.doc.name,
+					current_allocation: allocation,
+					transfer_date: frappe.datetime.get_today(),
+				}),
+			group
+		);
+		frm.add_custom_button(
+			__("View Allocation"),
+			() => frappe.set_route("Form", "Accommodation Allocation", allocation),
+			group
+		);
+	} else if (entitlement && entitlement.entitlement_type === "Allowance") {
+		frm.add_custom_button(
+			__("Switch to Company Accommodation"),
+			() => open_entitlement_dialog(frm, { prefill_type: "Company Accommodation" }),
+			group
+		);
+	} else {
+		frm.add_custom_button(__("Create Entitlement"), () => open_entitlement_dialog(frm), group);
+	}
 }
 
 /**
@@ -134,6 +159,7 @@ function wire_actions(frm, $wrapper, state) {
  */
 function open_entitlement_dialog(frm, options = {}) {
 	const prefill_type = options.prefill_type || "Company Accommodation";
+	const can_allocate = frappe.model.can_create("Accommodation Allocation");
 
 	const maybe_fetch_allowance = () => {
 		if (dialog.get_value("entitlement_type") !== "Allowance") {
@@ -145,21 +171,100 @@ function open_entitlement_dialog(frm, options = {}) {
 				employee: frm.doc.name,
 				on_date: dialog.get_value("from_date"),
 				component: dialog.get_value("allowance_component") || null,
+				salary_structure_assignment: dialog.get_value("salary_structure_assignment") || null,
 			},
 			callback(response) {
 				const details = response.message || {};
-				if (details.component && !dialog.get_value("allowance_component")) {
-					dialog.set_value("allowance_component", details.component);
+				// set_value fires onchange, so only a changed value is set. Otherwise the fetch loops.
+				const updates = {
+					allowance_amount: details.amount || 0,
+					allowance_currency: details.currency || null,
+				};
+				if (details.salary_structure_assignment && !dialog.get_value("salary_structure_assignment")) {
+					updates.salary_structure_assignment = details.salary_structure_assignment;
 				}
-				if (details.amount) {
-					dialog.set_value("allowance_amount", details.amount);
-				}
-				if (details.currency && !dialog.get_value("allowance_currency")) {
-					dialog.set_value("allowance_currency", details.currency);
-				}
+				dialog.set_values(updates);
+				dialog.fields_dict.allowance_source.$wrapper.html(
+					`<div class="text-muted small">${frappe.utils.escape_html(details.source || "")}</div>`
+				);
 			},
 		});
 	};
+
+	// Only a user who may create an allocation houses the employee from this dialog.
+	const allocation_note = {
+		fieldname: "allocation_note",
+		fieldtype: "HTML",
+		options: `<div class="text-muted">${__("An Accommodation User allocates the bed.")}</div>`,
+	};
+	const allocation_fields = () => [
+		{
+			fieldname: "location",
+			fieldtype: "Link",
+			options: "Accommodation Location",
+			label: __("Location"),
+			get_query: () => ({ filters: { status: "Active", company: frm.doc.company } }),
+			onchange: () => dialog.set_values({ site: null, floor: null, room: null, bed: null }),
+		},
+		{
+			fieldname: "site",
+			fieldtype: "Link",
+			options: "Accommodation Site",
+			label: __("Accommodation Site"),
+			get_query: () => ({
+				filters: {
+					location: dialog.get_value("location"),
+					status: "Active",
+					gender_restriction: gender_restriction_filter(frm.doc.gender),
+				},
+			}),
+			onchange: () => dialog.set_values({ floor: null, room: null, bed: null }),
+		},
+		{ fieldname: "accommodation_column", fieldtype: "Column Break" },
+		{
+			fieldname: "floor",
+			fieldtype: "Link",
+			options: "Accommodation Floor",
+			label: __("Floor"),
+			get_query: () => ({ filters: { site: dialog.get_value("site"), status: "Active" } }),
+			onchange: () => dialog.set_values({ room: null, bed: null }),
+		},
+		{
+			fieldname: "room",
+			fieldtype: "Link",
+			options: "Accommodation Room",
+			label: __("Room"),
+			get_query: () => ({
+				filters: {
+					floor: dialog.get_value("floor"),
+					status: "Active",
+					gender_restriction: gender_restriction_filter(frm.doc.gender),
+				},
+			}),
+			onchange: () => dialog.set_value("bed", null),
+		},
+		{
+			fieldname: "bed",
+			fieldtype: "Link",
+			options: "Accommodation Bed",
+			label: __("Bed"),
+			get_query: () => ({
+				query: "gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation.get_allocatable_beds",
+				filters: {
+					room: dialog.get_value("room"),
+					floor: dialog.get_value("floor"),
+					site: dialog.get_value("site"),
+					gender: frm.doc.gender || "",
+				},
+			}),
+		},
+		{
+			fieldname: "expected_end_date",
+			fieldtype: "Date",
+			label: __("Expected End Date"),
+			depends_on: 'eval:doc.entitlement_type=="Company Accommodation"',
+		},
+	];
 
 	const dialog = new frappe.ui.Dialog({
 		title: __("Create Entitlement"),
@@ -188,59 +293,7 @@ function open_entitlement_dialog(frm, options = {}) {
 				label: __("Assign Accommodation"),
 				depends_on: 'eval:doc.entitlement_type=="Company Accommodation"',
 			},
-			{
-				fieldname: "location",
-				fieldtype: "Link",
-				options: "Accommodation Location",
-				label: __("Location"),
-				get_query: () => ({ filters: { status: "Active" } }),
-				onchange: () => dialog.set_values({ site: null, floor: null, room: null, bed: null }),
-			},
-			{
-				fieldname: "site",
-				fieldtype: "Link",
-				options: "Accommodation Site",
-				label: __("Accommodation Site"),
-				get_query: () => ({ filters: { location: dialog.get_value("location"), status: "Active" } }),
-				onchange: () => dialog.set_values({ floor: null, room: null, bed: null }),
-			},
-			{ fieldname: "accommodation_column", fieldtype: "Column Break" },
-			{
-				fieldname: "floor",
-				fieldtype: "Link",
-				options: "Accommodation Floor",
-				label: __("Floor"),
-				get_query: () => ({ filters: { site: dialog.get_value("site"), status: "Active" } }),
-				onchange: () => dialog.set_values({ room: null, bed: null }),
-			},
-			{
-				fieldname: "room",
-				fieldtype: "Link",
-				options: "Accommodation Room",
-				label: __("Room"),
-				get_query: () => ({ filters: { floor: dialog.get_value("floor"), status: "Active" } }),
-				onchange: () => dialog.set_value("bed", null),
-			},
-			{
-				fieldname: "bed",
-				fieldtype: "Link",
-				options: "Accommodation Bed",
-				label: __("Bed"),
-				get_query: () => ({
-					query: "gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation.get_allocatable_beds",
-					filters: {
-						room: dialog.get_value("room"),
-						floor: dialog.get_value("floor"),
-						site: dialog.get_value("site"),
-					},
-				}),
-			},
-			{
-				fieldname: "expected_end_date",
-				fieldtype: "Date",
-				label: __("Expected End Date"),
-				depends_on: 'eval:doc.entitlement_type=="Company Accommodation"',
-			},
+			...(can_allocate ? allocation_fields() : [allocation_note]),
 			{
 				fieldname: "allowance_section",
 				fieldtype: "Section Break",
@@ -248,29 +301,47 @@ function open_entitlement_dialog(frm, options = {}) {
 				depends_on: 'eval:doc.entitlement_type=="Allowance"',
 			},
 			{
-				fieldname: "allowance_amount",
-				fieldtype: "Currency",
-				label: __("Allowance Amount"),
-				options: "allowance_currency",
-				description: __("Filled in from payroll automatically. Override only if it differs."),
-			},
-			{ fieldname: "allowance_currency", fieldtype: "Link", options: "Currency", label: __("Currency") },
-			{ fieldname: "allowance_column", fieldtype: "Column Break" },
-			{
-				fieldname: "allowance_frequency",
-				fieldtype: "Select",
-				label: __("Frequency"),
-				options: "Monthly\nQuarterly\nAnnual\nOne Time",
-				default: "Monthly",
+				fieldname: "salary_structure_assignment",
+				fieldtype: "Link",
+				options: "Salary Structure Assignment",
+				label: __("Salary Structure Assignment"),
+				mandatory_depends_on: 'eval:doc.entitlement_type=="Allowance"',
+				get_query: () => ({ filters: { employee: frm.doc.name, docstatus: 1 } }),
+				onchange: () => {
+					dialog.set_value("allowance_component", null);
+					maybe_fetch_allowance();
+				},
 			},
 			{
 				fieldname: "allowance_component",
 				fieldtype: "Link",
 				options: "Salary Component",
 				label: __("Salary Component"),
+				mandatory_depends_on: 'eval:doc.entitlement_type=="Allowance"',
+				get_query: () => ({
+					query: "gd_acc.gd_accomodation.doctype.accommodation_entitlement.accommodation_entitlement.get_assignment_components",
+					filters: { salary_structure_assignment: dialog.get_value("salary_structure_assignment") },
+				}),
 				onchange: maybe_fetch_allowance,
 			},
-			{ fieldname: "remarks", fieldtype: "Small Text", label: __("Remarks") },
+			{ fieldname: "allowance_column", fieldtype: "Column Break" },
+			{
+				fieldname: "allowance_amount",
+				fieldtype: "Currency",
+				label: __("Allowance Amount"),
+				options: "allowance_currency",
+				read_only: 1,
+				description: __("From the latest submitted salary slip."),
+			},
+			{ fieldname: "allowance_currency", fieldtype: "Link", options: "Currency", hidden: 1 },
+			{ fieldname: "allowance_source", fieldtype: "HTML" },
+			{ fieldname: "remarks_section", fieldtype: "Section Break" },
+			{
+				fieldname: "remarks",
+				fieldtype: "Small Text",
+				label: __("Remarks"),
+				depends_on: 'eval:doc.entitlement_type!="Allowance"',
+			},
 		],
 		primary_action_label: __("Save"),
 		primary_action(values) {
@@ -299,48 +370,6 @@ function open_entitlement_dialog(frm, options = {}) {
 	}
 }
 
-function release_dialog(frm, allocation) {
-	const dialog = new frappe.ui.Dialog({
-		title: __("Release Accommodation"),
-		fields: [
-			{
-				fieldname: "release_date",
-				fieldtype: "Date",
-				label: __("Release Date"),
-				default: frappe.datetime.get_today(),
-				reqd: 1,
-				description: __("The date the employee actually leaves. Kept in the allocation history."),
-			},
-			{
-				fieldname: "reason",
-				fieldtype: "Select",
-				label: __("Reason"),
-				options: ["Manual Release", "Employee Exit", "Other"].join("\n"),
-				default: "Manual Release",
-				reqd: 1,
-			},
-			{ fieldname: "remarks", fieldtype: "Small Text", label: __("Remarks") },
-		],
-		primary_action_label: __("Release"),
-		primary_action(values) {
-			frappe.call({
-				method: "gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation.release_allocation",
-				args: { allocation: allocation, ...values },
-				freeze: true,
-				callback() {
-					dialog.hide();
-					frm.reload_doc();
-					frappe.show_alert({
-						message: __("Accommodation released. The bed is available again."),
-						indicator: "green",
-					});
-				},
-			});
-		},
-	});
-	dialog.show();
-}
-
 /* ---------------------------------------------------------------- history */
 
 function build_history(state) {
@@ -348,109 +377,67 @@ function build_history(state) {
 	const allocations = state.allocations || [];
 
 	if (!entitlements.length && !allocations.length) {
-		return `<div class="text-muted">${__("No accommodation history yet.")}</div>`;
+		return `<div class="text-muted small acc-history">${__("No accommodation history yet.")}</div>`;
 	}
 
 	return `
-		${accommodation_styles()}
 		${entitlement_table(entitlements)}
 		${allocation_table(allocations)}`;
 }
 
 function entitlement_table(rows) {
+	return history_table(__("Entitlement History"), rows, [
+		[__("Entitlement"), (row) => doc_link("accommodation-entitlement", row.name)],
+		[__("Type"), (row) => escape(__(row.entitlement_type))],
+		[__("Period"), (row) => period(row.from_date, row.to_date)],
+		[
+			__("Allowance"),
+			(row) => (row.allowance_amount ? format_currency(row.allowance_amount, row.allowance_currency) : ""),
+			"text-right",
+		],
+		[__("Status"), (row) => gd_acc.accommodation.status_pill("Accommodation Entitlement", "status", row.status)],
+	]);
+}
+
+function allocation_table(rows) {
+	return history_table(__("Accommodation History"), rows, [
+		[__("Allocation"), (row) => doc_link("accommodation-allocation", row.name)],
+		[__("Site"), (row) => escape((row.place || {}).site)],
+		[__("Floor"), (row) => escape((row.place || {}).floor)],
+		[__("Room"), (row) => escape((row.place || {}).room)],
+		[__("Bed"), (row) => escape((row.place || {}).bed)],
+		[__("Period"), (row) => period(row.start_date, row.release_date)],
+		[__("Stay"), (row) => stay_length(row.start_date, row.release_date), "text-right"],
+		[__("Status"), (row) => gd_acc.accommodation.status_pill("Accommodation Allocation", "status", row.status)],
+	]);
+}
+
+/** Both history tables share this one layout. A column is [label, render, class]. */
+function history_table(title, rows, columns) {
 	if (!rows.length) {
 		return "";
 	}
 
+	const head = columns.map(([label, , cls]) => `<th class="${cls || ""}">${label}</th>`).join("");
 	const body = rows
 		.map(
-			(row) => `
-		<tr>
-			<td>${doc_link("accommodation-entitlement", row.name)}</td>
-			<td>${frappe.utils.escape_html(row.entitlement_type || "")}</td>
-			<td>${period(row.from_date, row.to_date)}</td>
-			<td class="text-right">${
-				row.allowance_amount
-					? format_currency(row.allowance_amount, row.allowance_currency)
-					: "&mdash;"
-			}</td>
-			<td>${pill(row.status)}</td>
-		</tr>`
+			(row) =>
+				`<tr>${columns
+					.map(([, render, cls]) => `<td class="${cls || ""}">${render(row) || ""}</td>`)
+					.join("")}</tr>`
 		)
 		.join("");
 
 	return `
-		<div class="acc-history-title">${__("Entitlement History")}<span>${__("{0} rows", [
-			rows.length,
-		])}</span></div>
-		<div class="acc-scroll">
-			<table class="table table-bordered table-sm">
-				<thead>
-					<tr>
-						<th style="width: 18%">${__("Entitlement")}</th>
-						<th style="width: 22%">${__("Type")}</th>
-						<th style="width: 26%">${__("Period")}</th>
-						<th class="text-right" style="width: 18%">${__("Allowance")}</th>
-						<th style="width: 16%">${__("Status")}</th>
-					</tr>
-				</thead>
-				<tbody>${body}</tbody>
-			</table>
+		<div class="frappe-control acc-history">
+			<div class="control-label">${title} (${rows.length})</div>
+			<div class="acc-scroll">
+				<table class="table table-bordered acc-table">
+					<thead><tr>${head}</tr></thead>
+					<tbody>${body}</tbody>
+				</table>
+			</div>
 		</div>`;
-}
-
-/** Stays read as a journey down the page, so they are drawn as a timeline. */
-function allocation_table(rows) {
-	if (!rows.length) {
-		return "";
-	}
-
-	const colors = { Active: "green", Closed: "gray", Draft: "orange", Cancelled: "red" };
-
-	const entries = rows
-		.map((row) => {
-			const color = colors[row.status] || "gray";
-			const current = row.status === "Active";
-			const place = [row.location, row.site, row.floor, row.room, row.bed]
-				.filter(Boolean)
-				.map((value) => frappe.utils.escape_html(value))
-				.join(" <span class='acc-sep'>&rsaquo;</span> ");
-
-			const days = stay_length(row.start_date, row.release_date);
-			const meta = [
-				row.bed_type ? `<span class="acc-tag">${frappe.utils.escape_html(row.bed_type)}</span>` : "",
-				row.release_reason
-					? `<span class="acc-tag">${frappe.utils.escape_html(row.release_reason)}</span>`
-					: "",
-				doc_link("accommodation-allocation", row.name),
-			]
-				.filter(Boolean)
-				.join(" ");
-
-			return `
-			<div class="acc-step ${current ? "is-current" : ""}">
-				<span class="acc-dot ${color}"></span>
-				<div class="acc-step-body">
-					<div class="acc-step-head">
-						<span class="indicator-pill ${color}">${
-							current ? __("Current") : frappe.utils.escape_html(row.status || "")
-						}</span>
-						<span class="acc-step-days">${days}</span>
-					</div>
-					<div class="acc-step-place">${place}</div>
-					<div class="acc-step-meta">
-						${period(row.start_date, row.release_date)} &middot; ${meta}
-					</div>
-				</div>
-			</div>`;
-		})
-		.join("");
-
-	return `
-		<div class="acc-history-title">${__("Accommodation History")}<span>${__("{0} stays", [
-			rows.length,
-		])}</span></div>
-		<div class="acc-scroll acc-timeline">${entries}</div>`;
 }
 
 function stay_length(start_date, release_date) {
@@ -464,6 +451,10 @@ function stay_length(start_date, release_date) {
 
 /* ---------------------------------------------------------------- helpers */
 
+function escape(value) {
+	return frappe.utils.escape_html(value || "");
+}
+
 function doc_link(route, name) {
 	return `<a href="/app/${route}/${encodeURIComponent(name)}">${frappe.utils.escape_html(name)}</a>`;
 }
@@ -474,94 +465,43 @@ function period(from_date, to_date) {
 	return `${start} &rarr; ${end}`;
 }
 
-function pill(status) {
-	const colors = {
-		Active: "green",
-		Closed: "gray",
-		Draft: "orange",
-		Cancelled: "red",
-	};
-	return `<span class="indicator-pill ${colors[status] || "gray"}">${frappe.utils.escape_html(
-		status || ""
-	)}</span>`;
-}
-
+/**
+ * Frappe classes carry the look. This only fixes the row height, so a table
+ * shows HISTORY_VISIBLE_ROWS rows and a sticky header, then scrolls.
+ */
 function accommodation_styles() {
-	if (accommodation_styles.done) {
-		return "";
-	}
-	accommodation_styles.done = true;
-
 	return `
 		<style>
-			.acc-banner {
-				border-left: 3px solid var(--gray-400);
-				background: var(--subtle-fg, var(--control-bg));
-				border-radius: var(--border-radius-md, 8px);
-				padding: 10px 14px;
-				margin-bottom: 10px;
-			}
-			.acc-banner.green { border-left-color: var(--green-500); }
-			.acc-banner.blue { border-left-color: var(--blue-500); }
-			.acc-banner.gray { border-left-color: var(--gray-400); }
-			.acc-banner-title { font-weight: 600; color: var(--text-color); }
-			.acc-banner-sub { font-size: var(--text-sm, 12px); color: var(--text-muted); margin-top: 2px; }
-			.acc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-			.acc-history-title {
-				font-weight: 600;
-				color: var(--text-color);
-				margin: 16px 0 8px;
-				display: flex;
-				align-items: baseline;
-				gap: 8px;
-			}
-			.acc-history-title span { font-weight: normal; font-size: var(--text-sm, 12px); color: var(--text-muted); }
+			.acc-history { margin-top: var(--margin-md, 12px); }
 			.acc-scroll {
-				max-height: 232px;
-				overflow-y: auto;
-				border: 1px solid var(--border-color);
-				border-radius: var(--border-radius-md, 8px);
+				--acc-row: 32px;
+				max-height: calc(var(--acc-row) * ${HISTORY_VISIBLE_ROWS + 1} + 2px);
+				overflow: auto;
+				border: 1px solid var(--table-border-color, var(--border-color));
+				border-radius: var(--border-radius, 6px);
 			}
-			.acc-scroll table { margin-bottom: 0; border: none; }
-			.acc-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--subtle-fg, var(--control-bg)); }
-			.acc-sep { color: var(--text-muted); }
-			.acc-tag {
-				font-size: 11px;
-				padding: 1px 6px;
-				border-radius: 8px;
-				background: var(--control-bg);
-				color: var(--text-muted);
+			.acc-table { margin: 0; border: 0; border-collapse: separate; border-spacing: 0; }
+			.acc-table th, .acc-table td {
+				height: var(--acc-row);
+				padding: 0 var(--padding-sm, 8px);
+				border-width: 0 0 1px 0;
+				white-space: nowrap;
+				vertical-align: middle;
+				font-size: var(--text-sm, 12px);
 			}
-			.acc-timeline { padding: 4px 0 4px 6px; max-height: 330px; }
-			.acc-step { display: flex; gap: 12px; padding: 10px 14px 10px 8px; position: relative; }
-			.acc-step::before {
-				content: "";
-				position: absolute;
-				left: 13px;
-				top: 26px;
-				bottom: -10px;
-				width: 2px;
-				background: var(--border-color);
-			}
-			.acc-step:last-child::before { display: none; }
-			.acc-step.is-current { background: var(--alert-bg-green, var(--control-bg)); border-radius: 6px; }
-			.acc-dot {
-				width: 11px;
-				height: 11px;
-				border-radius: 50%;
-				margin-top: 5px;
-				flex: 0 0 auto;
+			.acc-table tbody tr:last-child td { border-bottom: 0; }
+			.acc-table thead th {
+				position: sticky;
+				top: 0;
 				z-index: 1;
-				box-shadow: 0 0 0 3px var(--card-bg, #fff);
+				background: var(--subtle-fg, var(--control-bg));
+				color: var(--text-muted);
+				font-weight: var(--weight-medium, 500);
 			}
-			.acc-dot.green { background: var(--green-500); }
-			.acc-dot.gray { background: var(--gray-400); }
-			.acc-dot.orange { background: var(--orange-500); }
-			.acc-dot.red { background: var(--red-500); }
-			.acc-step-body { flex: 1 1 auto; min-width: 0; }
-			.acc-step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
-			.acc-step-days { font-size: var(--text-sm, 12px); color: var(--text-muted); }
-			.acc-step-place { font-weight: 600; color: var(--text-color); word-break: break-word; }
-			.acc-step-meta { font-size: var(--text-sm, 12px); color: var(--text-muted); margin-top: 2px; }
 		</style>`;
+}
+
+// Places open to the employee's gender. An employee with no gender sees Any places only.
+function gender_restriction_filter(gender) {
+	return gender ? ["in", ["Any", gender]] : "Any";
 }

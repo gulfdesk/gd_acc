@@ -1,21 +1,21 @@
 {
  "actions": [],
  "allow_rename": 0,
- "creation": "2026-09-18 10:00:00.000000",
+ "creation": "2026-09-21 12:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "accommodation_item",
   "item_category",
+  "is_returnable",
   "quantity",
   "condition",
-  "returned_quantity",
   "remarks"
  ],
  "fields": [
   {
-   "columns": 3,
+   "columns": 4,
    "fieldname": "accommodation_item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -24,6 +24,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fetch_from": "accommodation_item.item_category",
    "fieldname": "item_category",
    "fieldtype": "Data",
@@ -32,12 +33,20 @@
    "read_only": 1
   },
   {
+   "fetch_from": "accommodation_item.is_returnable",
+   "fieldname": "is_returnable",
+   "fieldtype": "Check",
+   "label": "Is Returnable",
+   "read_only": 1
+  },
+  {
    "columns": 1,
    "default": "1",
    "fieldname": "quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Quantity",
+   "label": "Qty",
+   "non_negative": 1,
    "reqd": 1
   },
   {
@@ -50,14 +59,6 @@
    "options": "New\nGood\nFair\nDamaged"
   },
   {
-   "columns": 1,
-   "default": "0",
-   "fieldname": "returned_quantity",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Returned Qty"
-  },
-  {
    "fieldname": "remarks",
    "fieldtype": "Data",
    "label": "Remarks"
@@ -66,10 +67,10 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-18 10:00:00.000000",
+ "modified": "2026-09-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
- "name": "Accommodation Assigned Item",
+ "name": "Accommodation Allocation Item",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

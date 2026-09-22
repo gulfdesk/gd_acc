@@ -30,6 +30,12 @@ frappe.query_reports["Accommodation Occupancy"] = {
 			options: "\nCamp\nBuilding\nOther",
 		},
 		{
+			fieldname: "gender_restriction",
+			label: __("Gender Restriction"),
+			fieldtype: "Select",
+			options: "\nAny\nMale\nFemale",
+		},
+		{
 			fieldname: "group_by",
 			label: __("Group By"),
 			fieldtype: "Select",

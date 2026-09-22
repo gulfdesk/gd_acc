@@ -10,11 +10,13 @@
   "site_name",
   "site_code",
   "location",
+  "company",
   "status",
   "column_break_basic",
   "accommodation_type",
   "sub_type",
   "enable_bed_allocation",
+  "gender_restriction",
   "manager",
   "address_section",
   "address",
@@ -58,6 +60,16 @@
    "reqd": 1
   },
   {
+   "fetch_from": "location.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "description": "Copied from the Location."
+  },
+  {
    "default": "Active",
    "description": "Use the Disable button to retire this site. It is never edited directly.",
    "fieldname": "status",
@@ -98,6 +110,16 @@
    "fieldname": "enable_bed_allocation",
    "fieldtype": "Check",
    "label": "Enable Bed Level Allocation"
+  },
+  {
+   "default": "Any",
+   "fieldname": "gender_restriction",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Gender Restriction",
+   "options": "Any\nMale\nFemale",
+   "reqd": 1
   },
   {
    "fieldname": "manager",
@@ -172,7 +194,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Site",
@@ -192,15 +214,12 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
-   "share": 1,
-   "write": 1
+   "role": "Accommodation User"
   },
   {
    "email": 1,

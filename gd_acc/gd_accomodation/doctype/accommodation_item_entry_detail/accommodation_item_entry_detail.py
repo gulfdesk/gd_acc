@@ -4,5 +4,5 @@
 from frappe.model.document import Document
 
 
-class AccommodationAssignedItem(Document):
+class AccommodationItemEntryDetail(Document):
 	pass

@@ -7,10 +7,10 @@ from frappe.model.document import Document
 from frappe.utils import getdate
 
 from gd_acc.gd_accomodation.accommodation_utils import (
-	ALLOCATABLE_BED_STATUSES,
-	get_conflicting_allocation,
+	CURRENT_STAY_STATUSES,
 	resolve_hierarchy,
 	site_requires_bed,
+	validate_placement,
 )
 
 
@@ -45,9 +45,9 @@ class AccommodationTransfer(Document):
 				title=_("Wrong Allocation"),
 			)
 
-		if allocation.docstatus != 1 or allocation.status != "Active":
+		if allocation.docstatus != 1 or allocation.status not in CURRENT_STAY_STATUSES:
 			frappe.throw(
-				_("Only an active allocation can be transferred. {0} is {1}.").format(
+				_("Only an active or pending release allocation can be transferred. {0} is {1}.").format(
 					frappe.bold(self.current_allocation), frappe.bold(allocation.status)
 				),
 				title=_("Not Active"),
@@ -103,28 +103,18 @@ class AccommodationTransfer(Document):
 			)
 
 	def validate_destination_is_free(self):
-		if not self.to_bed:
-			return
-
-		conflict = get_conflicting_allocation(self.to_bed, self.transfer_date, self.expected_end_date)
-		if conflict:
-			frappe.throw(
-				_("Bed {0} is already allocated to {1} under {2} for an overlapping period.").format(
-					frappe.bold(self.to_bed),
-					frappe.bold(conflict.employee_name or conflict.employee),
-					frappe.bold(conflict.name),
-				),
-				title=_("Double Booking"),
-			)
-
-		bed_status = frappe.db.get_value("Accommodation Bed", self.to_bed, "status")
-		if bed_status not in ALLOCATABLE_BED_STATUSES:
-			frappe.throw(
-				_("Bed {0} is {1} and cannot be allocated.").format(
-					frappe.bold(self.to_bed), frappe.bold(bed_status)
-				),
-				title=_("Bed Not Available"),
-			)
+		validate_placement(
+			employee=self.employee_name or self.employee,
+			employee_id=self.employee,
+			company=self.company,
+			location=self.to_location,
+			site=self.to_site,
+			floor=self.to_floor,
+			room=self.to_room,
+			bed=self.to_bed,
+			start_date=self.transfer_date,
+			end_date=self.expected_end_date,
+		)
 
 	def on_submit(self):
 		"""Close the old stay and open the new one in a single transaction.

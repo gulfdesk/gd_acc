@@ -17,6 +17,7 @@ STATUS_FIELDS = {
 	"Occupied": "occupied",
 	"Reserved": "reserved",
 	"Maintenance": "maintenance",
+	"Blocked": "blocked",
 	"Inactive": "inactive",
 }
 
@@ -66,6 +67,12 @@ def get_columns(level):
 			"fieldname": "maintenance",
 			"fieldtype": "Int",
 			"width": 110,
+		},
+		{
+			"label": _("Blocked"),
+			"fieldname": "blocked",
+			"fieldtype": "Int",
+			"width": 90,
 		},
 		{
 			"label": _("Inactive"),
@@ -122,6 +129,7 @@ def new_group(group_field, key):
 			"available": 0,
 			"reserved": 0,
 			"maintenance": 0,
+			"blocked": 0,
 			"inactive": 0,
 			"occupancy_percent": 0.0,
 		}
@@ -132,7 +140,7 @@ def get_bed_filters(filters):
 	"""Bed filters for the selected scope, or None when nothing can match."""
 	bed_filters = {}
 
-	for fieldname in ("location", "site"):
+	for fieldname in ("location", "site", "gender_restriction"):
 		if filters.get(fieldname):
 			bed_filters[fieldname] = filters.get(fieldname)
 
@@ -163,11 +171,13 @@ def get_report_summary(data):
 	total_beds = sum(cint(row.total_beds) for row in data)
 	occupied = sum(cint(row.occupied) for row in data)
 	available = sum(cint(row.available) for row in data)
+	blocked = sum(cint(row.blocked) for row in data)
 
 	return [
 		{"value": total_beds, "label": _("Total Beds"), "datatype": "Int", "indicator": "Blue"},
 		{"value": occupied, "label": _("Occupied"), "datatype": "Int", "indicator": "Orange"},
 		{"value": available, "label": _("Available"), "datatype": "Int", "indicator": "Green"},
+		{"value": blocked, "label": _("Blocked"), "datatype": "Int", "indicator": "Red"},
 		{
 			"value": get_percent(occupied, total_beds),
 			"label": _("Occupancy %"),

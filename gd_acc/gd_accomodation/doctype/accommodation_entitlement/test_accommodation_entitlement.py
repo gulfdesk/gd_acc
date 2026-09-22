@@ -5,6 +5,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
+from gd_acc.gd_accomodation.accommodation_utils import get_active_allocation, get_active_entitlement
 from gd_acc.gd_accomodation.api import get_dashboard_data
 from gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation import (
 	release_allocation,
@@ -42,7 +43,7 @@ class TestAccommodationEntitlement(FrappeTestCase):
 		employee = make_employee()
 
 		self.assertEqual(employee.accommodation_status, "Not Provided")
-		self.assertFalse(employee.current_accommodation_entitlement)
+		self.assertFalse(get_active_entitlement(employee.name))
 
 		state = get_employee_entitlement_state(employee.name)
 		self.assertIsNone(state["entitlement"])
@@ -62,7 +63,7 @@ class TestAccommodationEntitlement(FrappeTestCase):
 		self.assertEqual(entitlement.status, "Active")
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_entitlement, entitlement.name)
+		self.assertEqual(get_active_entitlement(employee.name), entitlement.name)
 
 	def test_not_provided_marks_employee_not_provided(self):
 		employee = make_employee()
@@ -128,7 +129,7 @@ class TestAccommodationEntitlement(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Allowance")
-		self.assertIsNone(employee.current_accommodation_allocation)
+		self.assertIsNone(get_active_allocation(employee.name))
 
 	def test_release_date_cannot_precede_the_allocation(self):
 		structure = make_structure()
@@ -228,8 +229,8 @@ class TestCreateEntitlement(FrappeTestCase):
 
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_allocation, result["allocation"])
-		self.assertEqual(employee.current_accommodation_entitlement, result["entitlement"])
+		self.assertEqual(get_active_allocation(employee.name), result["allocation"])
+		self.assertEqual(get_active_entitlement(employee.name), result["entitlement"])
 		self.assertEqual(frappe.db.get_value("Accommodation Bed", structure.bed.name, "status"), "Occupied")
 
 	def test_company_accommodation_without_a_free_bed_creates_nothing(self):
@@ -294,7 +295,7 @@ class TestCreateEntitlement(FrappeTestCase):
 		)
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Provided")
-		self.assertEqual(employee.current_accommodation_entitlement, second["entitlement"])
+		self.assertEqual(get_active_entitlement(employee.name), second["entitlement"])
 
 
 class TestReleaseClosesStaleEntitlement(FrappeTestCase):
@@ -321,11 +322,11 @@ class TestReleaseClosesStaleEntitlement(FrappeTestCase):
 		)
 		employee.reload()
 		self.assertEqual(employee.accommodation_status, "Not Provided")
-		self.assertTrue(employee.current_accommodation_entitlement)
-		self.assertNotEqual(employee.current_accommodation_entitlement, created["entitlement"])
+		self.assertTrue(get_active_entitlement(employee.name))
+		self.assertNotEqual(get_active_entitlement(employee.name), created["entitlement"])
 
 		new_entitlement = frappe.get_doc(
-			"Accommodation Entitlement", employee.current_accommodation_entitlement
+			"Accommodation Entitlement", get_active_entitlement(employee.name)
 		)
 		self.assertEqual(new_entitlement.entitlement_type, "Not Provided")
 
@@ -336,7 +337,7 @@ class TestReleaseClosesStaleEntitlement(FrappeTestCase):
 		employee = make_employee()
 		allocation = make_allocation(employee, structure)
 
-		self.assertFalse(employee.current_accommodation_entitlement)
+		self.assertFalse(get_active_entitlement(employee.name))
 
 		release_allocation(allocation.name, release_date=today(), reason="Manual Release")
 

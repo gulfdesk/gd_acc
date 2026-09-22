@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"099a101e54\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Accommodation Management</b></span>\", \"col\": 12}}, {\"id\": \"491792729b\", \"type\": \"card\", \"data\": {\"card_name\": \"Dashboard\", \"col\": 4}}, {\"id\": \"0b6e2a876d\", \"type\": \"card\", \"data\": {\"card_name\": \"Masters\", \"col\": 4}}, {\"id\": \"63d450d62e\", \"type\": \"card\", \"data\": {\"card_name\": \"Operations\", \"col\": 4}}, {\"id\": \"d8b4cb0d60\", \"type\": \"card\", \"data\": {\"card_name\": \"Setup\", \"col\": 4}}, {\"id\": \"a2b2838b9f\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}]",
+ "content": "[{\"id\": \"099a101e54\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Accommodation Management</b></span>\", \"col\": 12}}, {\"id\": \"5341a80a8c\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Total Beds\", \"col\": 4}}, {\"id\": \"d0ae23bf26\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Occupied Beds\", \"col\": 4}}, {\"id\": \"a1b809b8c0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Available Beds\", \"col\": 4}}, {\"id\": \"86eb28a202\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Releases\", \"col\": 4}}, {\"id\": \"45162f46f9\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Unhoused Employees\", \"col\": 4}}, {\"id\": \"491792729b\", \"type\": \"card\", \"data\": {\"card_name\": \"Dashboard\", \"col\": 4}}, {\"id\": \"0b6e2a876d\", \"type\": \"card\", \"data\": {\"card_name\": \"Masters\", \"col\": 4}}, {\"id\": \"63d450d62e\", \"type\": \"card\", \"data\": {\"card_name\": \"Operations\", \"col\": 4}}, {\"id\": \"d8b4cb0d60\", \"type\": \"card\", \"data\": {\"card_name\": \"Setup\", \"col\": 4}}, {\"id\": \"a2b2838b9f\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}]",
  "creation": "2026-09-17 09:42:30.026563",
  "custom_blocks": [],
  "docstatus": 0,
@@ -132,9 +132,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Asset Assignment",
+   "label": "Accommodation Item Entry",
    "link_count": 0,
-   "link_to": "Accommodation Asset Assignment",
+   "link_to": "Accommodation Item Entry",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -230,9 +230,9 @@
   {
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Asset Assignment",
+   "label": "Accommodation Item Report",
    "link_count": 0,
-   "link_to": "Accommodation Asset Assignment Report",
+   "link_to": "Accommodation Item Report",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -268,11 +268,47 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-18 13:27:27.820197",
+ "modified": "2026-09-21 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Management",
- "number_cards": [],
+ "number_cards": [
+  {
+   "doctype": "Workspace Number Card",
+   "label": "Total Beds",
+   "number_card_name": "Total Beds",
+   "parentfield": "number_cards",
+   "parenttype": "Workspace"
+  },
+  {
+   "doctype": "Workspace Number Card",
+   "label": "Occupied Beds",
+   "number_card_name": "Occupied Beds",
+   "parentfield": "number_cards",
+   "parenttype": "Workspace"
+  },
+  {
+   "doctype": "Workspace Number Card",
+   "label": "Available Beds",
+   "number_card_name": "Available Beds",
+   "parentfield": "number_cards",
+   "parenttype": "Workspace"
+  },
+  {
+   "doctype": "Workspace Number Card",
+   "label": "Pending Releases",
+   "number_card_name": "Pending Releases",
+   "parentfield": "number_cards",
+   "parenttype": "Workspace"
+  },
+  {
+   "doctype": "Workspace Number Card",
+   "label": "Unhoused Employees",
+   "number_card_name": "Unhoused Employees",
+   "parentfield": "number_cards",
+   "parenttype": "Workspace"
+  }
+ ],
  "owner": "Administrator",
  "public": 1,
  "quick_lists": [],

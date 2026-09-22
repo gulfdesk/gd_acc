@@ -5,24 +5,34 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
-EMPLOYEE_FIELDS = (
-	"name",
-	"employee_name",
-	"company",
-	"designation",
-	"accommodation_status",
-	"current_accommodation_location",
-	"current_accommodation_site",
-	"current_accommodation_type",
-	"current_accommodation_sub_type",
-	"current_accommodation_floor",
-	"current_accommodation_room",
-	"current_accommodation_bed",
-	"accommodation_start_date",
-	"accommodation_expected_end_date",
-	"accommodation_allowance_type",
-	"accommodation_allowance_amount",
-	"accommodation_allowance_currency",
+from gd_acc.gd_accomodation.accommodation_utils import (
+	CURRENT_STAY_STATUSES,
+	ENTITLEMENT_TO_EMPLOYEE_STATUS,
+)
+
+EMPLOYEE_FIELDS = ("name", "employee_name", "company", "designation")
+
+# Report column, then the Accommodation Allocation field it comes from.
+ALLOCATION_COLUMNS = {
+	"allocation_status": "status",
+	"current_accommodation_location": "location",
+	"current_accommodation_site": "site",
+	"current_accommodation_type": "accommodation_type",
+	"current_accommodation_sub_type": "sub_type",
+	"current_accommodation_floor": "floor",
+	"current_accommodation_room": "room",
+	"current_accommodation_bed": "bed",
+	"accommodation_start_date": "start_date",
+	"accommodation_expected_end_date": "expected_end_date",
+}
+
+ENTITLEMENT_FIELDS = (
+	"employee",
+	"entitlement_type",
+	"allowance_frequency",
+	"allowance_amount",
+	"allowance_currency",
+	"stay_status",
 )
 
 
@@ -66,6 +76,18 @@ def get_columns():
 			"fieldname": "accommodation_status",
 			"fieldtype": "Data",
 			"width": 150,
+		},
+		{
+			"label": _("Stay Status"),
+			"fieldname": "stay_status",
+			"fieldtype": "Data",
+			"width": 110,
+		},
+		{
+			"label": _("Allocation Status"),
+			"fieldname": "allocation_status",
+			"fieldtype": "Data",
+			"width": 130,
 		},
 		{
 			"label": _("Location"),
@@ -143,12 +165,74 @@ def get_columns():
 
 
 def get_data(filters):
-	return frappe.get_all(
+	data = frappe.get_all(
 		"Employee",
 		filters=get_employee_filters(filters),
 		fields=list(EMPLOYEE_FIELDS),
 		order_by="employee_name asc",
 	)
+	employees = [row.name for row in data]
+	entitlements = get_entitlements(employees)
+	allocations = get_allocations(employees)
+
+	for row in data:
+		entitlement = entitlements.get(row.name) or frappe._dict()
+		row.accommodation_status = ENTITLEMENT_TO_EMPLOYEE_STATUS.get(
+			entitlement.entitlement_type, "Not Provided"
+		)
+		row.stay_status = entitlement.stay_status
+		row.accommodation_allowance_type = entitlement.allowance_frequency
+		row.accommodation_allowance_amount = entitlement.allowance_amount
+		row.accommodation_allowance_currency = entitlement.allowance_currency
+
+		allocation = allocations.get(row.name) or frappe._dict()
+		for column, field in ALLOCATION_COLUMNS.items():
+			row[column] = allocation.get(field)
+
+	if filters.get("location"):
+		data = [row for row in data if row.current_accommodation_location == filters.location]
+	if filters.get("site"):
+		data = [row for row in data if row.current_accommodation_site == filters.site]
+	if filters.get("accommodation_status"):
+		data = [row for row in data if row.accommodation_status == filters.accommodation_status]
+	if filters.get("stay_status"):
+		data = [row for row in data if row.stay_status == filters.stay_status]
+
+	return data
+
+
+def get_entitlements(employees):
+	"""The active entitlement of each employee, read in one query. The latest one wins."""
+	if not employees:
+		return {}
+
+	rows = frappe.get_all(
+		"Accommodation Entitlement",
+		filters={"employee": ("in", employees), "docstatus": 1, "status": "Active"},
+		fields=list(ENTITLEMENT_FIELDS),
+		order_by="from_date asc",
+		limit=0,
+	)
+	return {row.employee: row for row in rows}
+
+
+def get_allocations(employees):
+	"""The current allocation of each employee, read in one query."""
+	if not employees:
+		return {}
+
+	rows = frappe.get_all(
+		"Accommodation Allocation",
+		filters={
+			"employee": ("in", employees),
+			"docstatus": 1,
+			"status": ("in", CURRENT_STAY_STATUSES),
+		},
+		fields=["employee", *ALLOCATION_COLUMNS.values()],
+		order_by="start_date asc",
+		limit=0,
+	)
+	return {row.employee: row for row in rows}
 
 
 def get_employee_filters(filters):
@@ -158,12 +242,6 @@ def get_employee_filters(filters):
 		employee_filters["company"] = filters.company
 	if filters.get("employee"):
 		employee_filters["name"] = filters.employee
-	if filters.get("accommodation_status"):
-		employee_filters["accommodation_status"] = filters.accommodation_status
-	if filters.get("location"):
-		employee_filters["current_accommodation_location"] = filters.location
-	if filters.get("site"):
-		employee_filters["current_accommodation_site"] = filters.site
 
 	if not cint(filters.get("include_inactive_employees")):
 		employee_filters["status"] = "Active"

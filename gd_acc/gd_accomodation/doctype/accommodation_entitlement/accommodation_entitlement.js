@@ -2,11 +2,34 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Accommodation Entitlement", {
+	setup(frm) {
+		frm.set_query("salary_structure_assignment", () => ({
+			filters: { employee: frm.doc.employee, docstatus: 1 },
+		}));
+		frm.set_query("allowance_component", () => ({
+			query: "gd_acc.gd_accomodation.doctype.accommodation_entitlement.accommodation_entitlement.get_assignment_components",
+			filters: { salary_structure_assignment: frm.doc.salary_structure_assignment },
+		}));
+	},
+
 	refresh(frm) {
 		render_allocation_panel(frm);
 
+		if (frm.doc.docstatus === 1 && frm.doc.stay_status) {
+			frm.dashboard.add_indicator(
+				__("Stay Status: {0}", [__(frm.doc.stay_status)]),
+				gd_acc.accommodation.status_color("Accommodation Entitlement", "stay_status", frm.doc.stay_status)
+			);
+		}
+
 		if (frm.doc.docstatus === 1 && frm.doc.status === "Active") {
-			if (frm.doc.entitlement_type === "Company Accommodation") {
+			frm.add_custom_button(__("End or Extend"), () => show_end_or_extend_dialog(frm));
+
+			if (
+				frm.doc.entitlement_type === "Company Accommodation" &&
+				frm.doc.stay_status !== "Allocated" &&
+				frappe.model.can_create("Accommodation Allocation")
+			) {
 				frm.add_custom_button(
 					__("Accommodation Allocation"),
 					() => {
@@ -34,12 +57,38 @@ frappe.ui.form.on("Accommodation Entitlement", {
 		}
 	},
 
+	salary_structure_assignment(frm) {
+		frm.set_value("allowance_component", null);
+	},
+
 	allowance_component(frm) {
 		fetch_allowance(frm, true);
 	},
 });
 
-/** Pull the housing allowance straight from the employee's salary structure. */
+/** HR ends or extends the entitlement by a change of its Effective To. */
+function show_end_or_extend_dialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("End or Extend"),
+		fields: [
+			{
+				fieldname: "to_date",
+				fieldtype: "Date",
+				label: __("Effective To"),
+				default: frm.doc.to_date,
+				description: __("Leave empty for an entitlement with no end date."),
+			},
+		],
+		primary_action_label: __("Save"),
+		primary_action(values) {
+			frm.set_value("to_date", values.to_date || null);
+			frm.save("Update").then(() => dialog.hide());
+		},
+	});
+	dialog.show();
+}
+
+/** Pull the housing allowance from the employee's latest salary slip. */
 function fetch_allowance(frm, force) {
 	if (!frm.doc.employee || !frm.doc.from_date) {
 		return;
@@ -51,11 +100,12 @@ function fetch_allowance(frm, force) {
 			employee: frm.doc.employee,
 			on_date: frm.doc.from_date,
 			component: frm.doc.allowance_component || null,
+			salary_structure_assignment: frm.doc.salary_structure_assignment || null,
 		},
 		callback(response) {
 			const details = response.message || {};
-			if (details.component && !frm.doc.allowance_component) {
-				frm.set_value("allowance_component", details.component);
+			if (details.salary_structure_assignment && !frm.doc.salary_structure_assignment) {
+				frm.set_value("salary_structure_assignment", details.salary_structure_assignment);
 			}
 			frm.set_value("salary_structure", details.salary_structure || null);
 			frm.set_value("allowance_source", details.source || null);

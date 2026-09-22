@@ -5,12 +5,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from gd_acc.gd_accomodation.accommodation_utils import update_floor_occupancy
+from gd_acc.gd_accomodation.accommodation_utils import get_site_gender, update_floor_occupancy
 
 
 class AccommodationFloor(Document):
 	def validate(self):
-		self.location = frappe.db.get_value("Accommodation Site", self.site, "location")
+		self.gender_restriction = get_site_gender(self.site)
 
 	def on_update(self):
 		update_floor_occupancy(self.name)

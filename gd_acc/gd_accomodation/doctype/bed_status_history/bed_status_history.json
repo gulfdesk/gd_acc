@@ -111,7 +111,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Reason",
-   "options": "\nAllocation\nRelease\nTransfer In\nTransfer Out\nManual Update\nMaintenance\nBulk Setup",
+   "options": "\nAllocation\nRelease\nTransfer In\nTransfer Out\nManual Update\nMaintenance\nBulk Setup\nHold\nHold Released",
    "read_only": 1
   },
   {
@@ -176,7 +176,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Bed Status History",
@@ -189,17 +189,18 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Manager",
-   "share": 1
+   "role": "Accommodation Manager"
   },
   {
+   "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer"
+   "role": "Accommodation User"
   },
   {
+   "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
@@ -225,8 +226,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
-   "share": 1
+   "role": "System Manager"
   }
  ],
  "row_format": "Dynamic",

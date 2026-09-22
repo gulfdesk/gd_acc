@@ -9,6 +9,7 @@
  "field_order": [
   "location_name",
   "location_code",
+  "company",
   "status",
   "column_break_basic",
   "country",
@@ -48,6 +49,17 @@
    "no_copy": 1,
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "description": "The company that provides this accommodation. Only its employees can be housed here.",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "default": "Active",
@@ -156,7 +168,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Location",
@@ -176,15 +188,12 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
-   "share": 1,
-   "write": 1
+   "role": "Accommodation User"
   },
   {
    "email": 1,

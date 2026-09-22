@@ -73,7 +73,7 @@ frappe.query_reports["Bed Availability"] = {
 			fieldname: "bed_status",
 			label: __("Bed Status"),
 			fieldtype: "Select",
-			options: "\nAvailable\nOccupied\nReserved\nMaintenance\nInactive",
+			options: "\nAvailable\nOccupied\nReserved\nMaintenance\nBlocked\nInactive",
 			default: "Available",
 		},
 		{
@@ -82,20 +82,19 @@ frappe.query_reports["Bed Availability"] = {
 			fieldtype: "Select",
 			options: "\nSingle\nBunk Lower\nBunk Upper\nDouble\nOther",
 		},
+		{
+			fieldname: "gender_restriction",
+			label: __("Gender Restriction"),
+			fieldtype: "Select",
+			options: "\nAny\nMale\nFemale",
+		},
 	],
 
 	formatter: function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
-		if (column.fieldname === "status" && data && data.status) {
-			const status_colors = {
-				Available: "green",
-				Occupied: "blue",
-				Reserved: "orange",
-				Maintenance: "red",
-				Inactive: "gray",
-			};
-			value = `<span class="indicator-pill ${status_colors[data.status] || "gray"}">${__(data.status)}</span>`;
+		if (column.fieldname === "status" && data) {
+			value = gd_acc.accommodation.status_pill("Accommodation Bed", "status", data.status);
 		}
 
 		return value;

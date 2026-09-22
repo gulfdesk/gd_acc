@@ -44,3 +44,51 @@ gd_acc.accommodation.add_status_buttons = function (frm) {
 
 	frm.page.set_indicator(__(frm.doc.status), disabling ? "green" : "gray");
 };
+
+/**
+ * The one status colour map for the app. List views, forms, reports, the
+ * dashboard and the Employee panel all read it, so a status has one colour
+ * everywhere. Keyed by DocType, then by fieldname.
+ */
+gd_acc.accommodation.STATUS_COLORS = {
+	"Accommodation Allocation": {
+		status: { Draft: "red", Active: "green", "Pending Release": "orange", Closed: "gray", Cancelled: "red" },
+	},
+	"Accommodation Entitlement": {
+		status: { Draft: "red", Active: "green", Closed: "gray", Cancelled: "red" },
+		stay_status: { "Awaiting Bed": "orange", Allocated: "green", Vacated: "gray" },
+	},
+	"Accommodation Bed": {
+		status: {
+			Available: "green",
+			Occupied: "blue",
+			Reserved: "orange",
+			Maintenance: "yellow",
+			Blocked: "red",
+			Inactive: "gray",
+		},
+	},
+	"Accommodation Maintenance": {
+		status: { Open: "red", "In Progress": "orange", Resolved: "green", Closed: "gray", Cancelled: "red" },
+		priority: { Low: "gray", Medium: "blue", High: "orange", Urgent: "red" },
+	},
+	"Accommodation Item Entry": {
+		items_status: { Outstanding: "orange", Cleared: "green" },
+	},
+	Employee: {
+		accommodation_status: { Provided: "green", Allowance: "blue", "Not Provided": "gray" },
+	},
+};
+
+gd_acc.accommodation.status_color = function (doctype, fieldname, value) {
+	const colors = (gd_acc.accommodation.STATUS_COLORS[doctype] || {})[fieldname] || {};
+	return colors[value] || "gray";
+};
+
+gd_acc.accommodation.status_pill = function (doctype, fieldname, value) {
+	if (!value) {
+		return "";
+	}
+	const color = gd_acc.accommodation.status_color(doctype, fieldname, value);
+	return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(__(value))}</span>`;
+};

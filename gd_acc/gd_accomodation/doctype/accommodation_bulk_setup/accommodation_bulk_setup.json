@@ -10,11 +10,14 @@
   "naming_series",
   "location",
   "site",
+  "generate_scope",
   "column_break_basic",
   "status",
   "generated_on",
   "floors_section",
   "floors",
+  "rooms_section",
+  "rooms",
   "result_section",
   "created_floors",
   "created_rooms",
@@ -51,6 +54,15 @@
    "reqd": 1
   },
   {
+   "default": "Beds Only",
+   "fieldname": "generate_scope",
+   "fieldtype": "Select",
+   "label": "Generate",
+   "options": "Beds Only\nFloors, Rooms and Beds",
+   "reqd": 1,
+   "description": "Beds Only adds beds to rooms that already exist at the site."
+  },
+  {
    "fieldname": "column_break_basic",
    "fieldtype": "Column Break"
   },
@@ -75,14 +87,31 @@
   {
    "fieldname": "floors_section",
    "fieldtype": "Section Break",
-   "label": "Floor Configuration"
+   "label": "Floor Configuration",
+   "depends_on": "eval:doc.generate_scope!=\"Beds Only\""
   },
   {
    "fieldname": "floors",
    "fieldtype": "Table",
    "label": "Floors",
    "options": "Accommodation Bulk Setup Floor",
-   "reqd": 1
+   "depends_on": "eval:doc.generate_scope!=\"Beds Only\"",
+   "mandatory_depends_on": "eval:doc.generate_scope!=\"Beds Only\""
+  },
+  {
+   "depends_on": "eval:doc.generate_scope==\"Beds Only\"",
+   "fieldname": "rooms_section",
+   "fieldtype": "Section Break",
+   "label": "Rooms"
+  },
+  {
+   "depends_on": "eval:doc.generate_scope==\"Beds Only\"",
+   "mandatory_depends_on": "eval:doc.generate_scope==\"Beds Only\"",
+   "fieldname": "rooms",
+   "fieldtype": "Table",
+   "label": "Rooms",
+   "options": "Accommodation Bulk Setup Room",
+   "description": "Existing rooms that get new beds. Use Get Rooms to load the active rooms of the site that have no beds."
   },
   {
    "fieldname": "result_section",
@@ -135,7 +164,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Bulk Setup",
@@ -155,21 +184,32 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accommodation Officer",
-   "share": 1,
-   "write": 1
+   "role": "Accommodation User"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
   },
   {
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager"
+   "role": "HR User"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance User"
   },
   {
    "create": 1,

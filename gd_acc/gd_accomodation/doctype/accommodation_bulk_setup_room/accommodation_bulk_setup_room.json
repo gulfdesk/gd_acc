@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-21 20:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "room",
+  "existing_beds",
+  "bed_configuration",
+  "beds_per_room",
+  "generated_beds_per_room",
+  "bed_number_prefix",
+  "bed_start_number"
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-21 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "GD Accomodation",
+ "name": "Accommodation Bulk Setup Room",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Room",
+   "options": "Accommodation Room",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fetch_from": "room.total_beds",
+   "fieldname": "existing_beds",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Existing Beds",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "default": "Single",
+   "description": "Single generates one bed per unit. Bunk generates a lower and an upper bed for every unit.",
+   "fieldname": "bed_configuration",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Bed Setup",
+   "options": "Single\nBunk"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "Single: number of beds to add. Bunk: number of bunk beds to add, each generating an upper and a lower bed.",
+   "fieldname": "beds_per_room",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Beds / Bunks"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "Beds actually added. Bunk setups produce twice the number entered.",
+   "fieldname": "generated_beds_per_room",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "= Beds",
+   "read_only": 1
+  },
+  {
+   "default": "B",
+   "fieldname": "bed_number_prefix",
+   "fieldtype": "Data",
+   "label": "Bed Prefix"
+  },
+  {
+   "columns": 1,
+   "default": "1",
+   "description": "First bed number, for example 3 gives B03, B04 and so on.",
+   "fieldname": "bed_start_number",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Start No."
+  }
+ ]
+}

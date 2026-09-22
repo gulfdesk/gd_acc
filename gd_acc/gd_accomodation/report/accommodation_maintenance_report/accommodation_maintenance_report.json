@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letter_head": null,
- "modified": "2026-09-17 10:00:00.000000",
+ "modified": "2026-09-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Maintenance Report",
@@ -24,7 +24,7 @@
    "role": "Accommodation Manager"
   },
   {
-   "role": "Accommodation Officer"
+   "role": "Accommodation User"
   },
   {
    "role": "HR Manager"
