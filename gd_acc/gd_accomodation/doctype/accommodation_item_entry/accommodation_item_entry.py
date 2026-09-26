@@ -238,10 +238,6 @@ class AccommodationItemEntry(Document):
 		return [self.name]
 
 
-def on_doctype_update():
-	frappe.db.add_index("Accommodation Item Entry Detail", ["against_detail", "docstatus"])
-
-
 @frappe.whitelist()
 def make_return(source_name):
 	"""Return a new, unsaved Return entry for the outstanding lines of one Assign entry."""
