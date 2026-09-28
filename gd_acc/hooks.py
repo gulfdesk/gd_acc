@@ -154,6 +154,12 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
+scheduler_events = {
+	"daily": [
+		"gd_acc.gd_accomodation.doctype.accommodation_entitlement.accommodation_entitlement.close_ended_entitlements",
+	],
+}
+
 # scheduler_events = {
 # 	"all": [
 # 		"gd_acc.tasks.all"
@@ -260,4 +266,3 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

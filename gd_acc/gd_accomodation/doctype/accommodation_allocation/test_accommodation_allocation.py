@@ -6,6 +6,9 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, today
 
 from gd_acc.gd_accomodation.accommodation_utils import get_active_allocation
+from gd_acc.gd_accomodation.doctype.accommodation_allocation.accommodation_allocation import (
+	release_allocation,
+)
 
 
 def current_stay_value(employee, fieldname):
@@ -243,6 +246,24 @@ class TestAccommodationAllocation(FrappeTestCase):
 		self.assertEqual(
 			frappe.db.get_value("Accommodation Allocation", first.name, "employee"), employee_a.name
 		)
+
+	def test_release_with_no_items_to_return(self):
+		# The release dialog sends null when nothing is returnable; it arrives as "".
+		structure = make_structure()
+		allocation = make_allocation(make_employee(), structure, start_date="2026-01-01")
+
+		release_allocation(allocation.name, release_date="2026-03-31", item_returns="")
+
+		self.assertEqual(frappe.db.get_value("Accommodation Allocation", allocation.name, "status"), "Closed")
+
+	def test_new_stay_may_start_on_the_release_date(self):
+		structure = make_structure()
+
+		first = make_allocation(make_employee(), structure, start_date="2026-01-01")
+		first.release(release_date="2026-03-31", reason="Manual Release")
+
+		second = make_allocation(make_employee(), structure, start_date="2026-03-31")
+		self.assertEqual(second.status, "Active")
 
 	def test_overlapping_historical_allocation_is_rejected(self):
 		structure = make_structure()

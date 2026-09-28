@@ -200,7 +200,8 @@ def get_conflicting_allocation(bed, start_date, end_date=None, exclude=None):
 
 	An allocation that is still Active or Pending Release is treated as open ended because the bed
 	is physically occupied until it is released. Closed allocations end on their
-	release date, so historical stays may sit back to back without conflicting.
+	release date, so historical stays may sit back to back without conflicting. The
+	release date is the handover day: the next stay may start on it.
 	"""
 	if not bed:
 		return None
@@ -222,7 +223,7 @@ def get_conflicting_allocation(bed, start_date, end_date=None, exclude=None):
 		other_start = getdate(row.start_date)
 		other_end = getdate(row.release_date) if row.status == "Closed" and row.release_date else None
 
-		starts_before_other_ends = other_end is None or start_date <= other_end
+		starts_before_other_ends = other_end is None or start_date < other_end
 		other_starts_before_end = end_date is None or other_start <= end_date
 
 		if starts_before_other_ends and other_starts_before_end:
