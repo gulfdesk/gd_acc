@@ -12,9 +12,13 @@ frappe.ui.form.on("Accommodation Bulk Setup", {
 	},
 
 	refresh(frm) {
+		// Beds Only adds beds to existing rooms. Creating a room from here would skip the site filter.
+		frm.fields_dict.rooms.grid.update_docfield_property("room", "only_select", 1);
+
 		if (frm.doc.status === "Completed") {
 			return;
 		}
+		show_beds_only_hint(frm);
 
 		if (frm.doc.generate_scope === "Beds Only") {
 			frm.add_custom_button(__("Get Rooms"), () => get_rooms_without_beds(frm));
@@ -32,6 +36,7 @@ frappe.ui.form.on("Accommodation Bulk Setup", {
 	site(frm) {
 		frm.clear_table("rooms");
 		frm.refresh_field("rooms");
+		show_beds_only_hint(frm);
 	},
 
 	generate_scope(frm) {
@@ -42,12 +47,35 @@ frappe.ui.form.on("Accommodation Bulk Setup", {
 frappe.ui.form.on("Accommodation Bulk Setup Floor", {
 	bed_configuration: show_generated_beds,
 	beds_per_room: show_generated_beds,
+	single_beds: show_generated_beds,
+	bunk_levels: show_generated_beds,
 });
 
 frappe.ui.form.on("Accommodation Bulk Setup Room", {
 	bed_configuration: show_generated_beds,
 	beds_per_room: show_generated_beds,
+	single_beds: show_generated_beds,
+	bunk_levels: show_generated_beds,
 });
+
+/** Beds Only needs rooms. A site without any is pointed to Floors, Rooms and Beds. */
+function show_beds_only_hint(frm) {
+	if (frm.doc.generate_scope !== "Beds Only" || !frm.doc.site) {
+		frm.set_intro("");
+		return;
+	}
+	frappe.db.count("Accommodation Room", { filters: { site: frm.doc.site } }).then((rooms) => {
+		frm.set_intro(
+			rooms
+				? ""
+				: __(
+						"{0} has no rooms yet. Beds Only adds beds to existing rooms; choose Floors, Rooms and Beds to create the floors, rooms and beds.",
+						[frappe.utils.escape_html(frm.doc.site)]
+				  ),
+			"orange"
+		);
+	});
+}
 
 function get_rooms_without_beds(frm) {
 	if (!frm.doc.site) {
@@ -70,25 +98,28 @@ function get_rooms_without_beds(frm) {
 	});
 }
 
-// A bunk unit is one frame holding a lower and an upper bed.
-function beds_per_unit(row) {
-	return row.bed_configuration === "Bunk" ? 2 : 1;
+// Beds in one room of the row. A bunk frame holds one bed per Bunk Level, 2 or 3;
+// a Single + Bunk row adds its single beds after the bunks.
+function beds_in_room(row) {
+	const units = row.beds_per_room || 0;
+	const levels = cint(row.bunk_levels) || 2;
+	if (row.bed_configuration === "Bunk") {
+		return units * levels;
+	}
+	if (row.bed_configuration === "Single + Bunk") {
+		return units * levels + (row.single_beds || 0);
+	}
+	return units;
 }
 
 function show_generated_beds(frm, cdt, cdn) {
-	const row = locals[cdt][cdn];
-	frappe.model.set_value(
-		cdt,
-		cdn,
-		"generated_beds_per_room",
-		(row.beds_per_room || 0) * beds_per_unit(row)
-	);
+	frappe.model.set_value(cdt, cdn, "generated_beds_per_room", beds_in_room(locals[cdt][cdn]));
 }
 
 function confirm_generation(frm) {
 	if (frm.doc.generate_scope === "Beds Only") {
 		const beds = (frm.doc.rooms || []).reduce(
-			(total, row) => total + (row.beds_per_room || 0) * beds_per_unit(row),
+			(total, row) => total + beds_in_room(row),
 			0
 		);
 		frappe.confirm(
@@ -106,7 +137,7 @@ function confirm_generation(frm) {
 		(totals, row) => {
 			const rooms = row.number_of_rooms || 0;
 			totals.rooms += rooms;
-			totals.beds += rooms * (row.beds_per_room || 0) * beds_per_unit(row);
+			totals.beds += rooms * beds_in_room(row);
 			return totals;
 		},
 		{ rooms: 0, beds: 0 }
@@ -114,7 +145,8 @@ function confirm_generation(frm) {
 
 	frappe.confirm(
 		__("Generate {0} floor(s), {1} room(s) and {2} bed(s) under {3}?", [
-			(frm.doc.floors || []).length,
+			// A floor repeated on several rows is created once.
+			new Set((frm.doc.floors || []).map((row) => (row.floor_name || "").trim())).size,
 			planned.rooms,
 			planned.beds,
 			frappe.utils.escape_html(frm.doc.site || ""),

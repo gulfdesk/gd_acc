@@ -20,6 +20,7 @@
   "held_by_room",
   "under_maintenance",
   "bed_type",
+  "bunk_levels",
   "occupancy_section",
   "current_employee",
   "current_employee_name",
@@ -132,10 +133,21 @@
   },
   {
    "default": "Single",
+   "description": "On a new bed, Bunk creates one bed for each level, for example B1-L, B1-M and B1-U.",
    "fieldname": "bed_type",
    "fieldtype": "Select",
    "label": "Bed Type",
-   "options": "Single\nBunk Upper\nBunk Lower\nDouble\nOther"
+   "options": "Single\nBunk\nBunk Lower\nBunk Middle\nBunk Upper\nDouble\nOther"
+  },
+  {
+   "default": "2",
+   "depends_on": "eval:doc.bed_type==\"Bunk\" && doc.__islocal",
+   "description": "2 creates Lower and Upper. 3 creates Lower, Middle and Upper.",
+   "fieldname": "bunk_levels",
+   "fieldtype": "Select",
+   "label": "Bunk Levels",
+   "mandatory_depends_on": "eval:doc.bed_type==\"Bunk\" && doc.__islocal",
+   "options": "2\n3"
   },
   {
    "fieldname": "occupancy_section",
@@ -189,7 +201,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 20:00:00.000000",
+ "modified": "2026-09-28 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Bed",
@@ -217,12 +229,15 @@
    "role": "Accommodation User"
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager"
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
   },
   {
    "print": 1,

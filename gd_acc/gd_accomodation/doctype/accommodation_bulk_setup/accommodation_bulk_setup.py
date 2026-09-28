@@ -7,38 +7,77 @@ from frappe.model.document import Document
 from frappe.utils import cint, now_datetime
 
 from gd_acc.gd_accomodation.accommodation_utils import site_requires_bed, update_room_occupancy
+from gd_acc.gd_accomodation.doctype.accommodation_bed.accommodation_bed import BUNK_LEVELS
 
 MAX_ROOMS_PER_RUN = 2000
 
 MAX_BEDS_PER_RUN = 2000
 
-BUNK_LEVELS = (("L", "Bunk Lower"), ("U", "Bunk Upper"))
-
 SCOPE_BEDS_ONLY = "Beds Only"
 
+BED_SETUP_BUNK = "Bunk"
 
-def beds_per_unit(bed_configuration):
-	"""A bunk unit is one frame holding two beds; a single unit is one bed."""
-	return len(BUNK_LEVELS) if bed_configuration == "Bunk" else 1
+BED_SETUP_MIXED = "Single + Bunk"
+
+
+def bunks_and_singles(row, units):
+	"""Bunk frames and single beds in one room. For a mixed setup, units counts the bunks."""
+	if row.bed_configuration == BED_SETUP_BUNK:
+		return units, 0
+	if row.bed_configuration == BED_SETUP_MIXED:
+		return units, cint(row.single_beds)
+	return 0, units
+
+
+def bunk_levels(row):
+	"""The levels of each bunk on the row, bottom first. The same levels as a Bunk made on the Bed form."""
+	levels = BUNK_LEVELS.get(cint(row.bunk_levels) or 2)
+	if not levels:
+		frappe.throw(_("Row {0}: Bunk Levels must be 2 or 3.").format(row.idx), title=_("Invalid Bed Setup"))
+	return levels
+
+
+def beds_in_room(row, units):
+	"""A bunk frame holds one bed per level: Lower and Upper, or Lower, Middle and Upper."""
+	bunks, singles = bunks_and_singles(row, units)
+	return (bunks * len(bunk_levels(row)) if bunks else 0) + singles
 
 
 def build_bed_plan(row, units_per_room, start=1):
 	"""Bed numbers and types for one room.
 
-	Single setups give B01, B02 … Bunk setups pair each unit as B01-L and
-	B01-U so the lower and upper of the same frame stay recognisable.
+	Single setups give B01, B02 … Bunk setups give each frame one bed per level,
+	B01-L and B01-U, or B01-L, B01-M and B01-U for three levels, so the beds of
+	one frame stay recognisable. A mixed setup numbers its bunks first, then its
+	single beds: B01-L, B01-U, B02.
 	"""
 	prefix = (row.bed_number_prefix or "B").strip()
-	units = range(start, start + units_per_room)
+	bunks, singles = bunks_and_singles(row, units_per_room)
+	beds = []
+	number = start
 
-	if row.bed_configuration != "Bunk":
-		return [{"bed_number": f"{prefix}{unit:02d}", "bed_type": "Single"} for unit in units]
+	for _bunk in range(bunks):
+		beds.extend(
+			{"bed_number": f"{prefix}{number:02d}-{suffix}", "bed_type": bed_type}
+			for suffix, bed_type in bunk_levels(row)
+		)
+		number += 1
+	for _single in range(singles):
+		beds.append({"bed_number": f"{prefix}{number:02d}", "bed_type": "Single"})
+		number += 1
 
-	return [
-		{"bed_number": f"{prefix}{unit:02d}-{suffix}", "bed_type": bed_type}
-		for unit in units
-		for suffix, bed_type in BUNK_LEVELS
-	]
+	return beds
+
+
+def validate_mixed_setup(row, units):
+	"""A mixed setup needs at least one bunk and one single bed; otherwise Single or Bunk fits."""
+	if row.bed_configuration == BED_SETUP_MIXED and (units < 1 or cint(row.single_beds) < 1):
+		frappe.throw(
+			_(
+				"Row {0}: Single + Bunk needs at least 1 bunk in Beds / Bunks and 1 bed in Single Beds."
+			).format(row.idx),
+			title=_("Invalid Bed Setup"),
+		)
 
 
 class AccommodationBulkSetup(Document):
@@ -65,11 +104,13 @@ class AccommodationBulkSetup(Document):
 		"""Resolve every floor, room and bed this run would create.
 
 		Runs before anything is written so a duplicate or a bad configuration
-		stops the run cleanly instead of leaving half a camp behind.
+		stops the run cleanly instead of leaving half a camp behind. A floor may
+		appear on more than one row: each row adds its own rooms with its own bed
+		setup, and the floor is created once.
 		"""
 		requires_bed = site_requires_bed(self.site)
 		plan = []
-		seen_floors = set()
+		floors = {}
 		total_rooms = 0
 
 		for row in self.floors:
@@ -77,34 +118,39 @@ class AccommodationBulkSetup(Document):
 			if not floor_name:
 				frappe.throw(_("Row {0}: Floor Name is required.").format(row.idx))
 
-			if floor_name in seen_floors:
-				frappe.throw(
-					_("Row {0}: Floor {1} is listed more than once.").format(row.idx, floor_name),
-					title=_("Duplicate Floor"),
-				)
-			seen_floors.add(floor_name)
-
-			floor_docname = f"{self.site} - {floor_name}"
-			if frappe.db.exists("Accommodation Floor", floor_docname):
-				frappe.throw(
-					_("Row {0}: Floor {1} already exists at this site.").format(row.idx, floor_name),
-					title=_("Duplicate Floor"),
-				)
+			floor = floors.get(floor_name)
+			if floor is None:
+				floor_docname = f"{self.site} - {floor_name}"
+				if frappe.db.exists("Accommodation Floor", floor_docname):
+					frappe.throw(
+						_("Row {0}: Floor {1} already exists at this site.").format(row.idx, floor_name),
+						title=_("Duplicate Floor"),
+					)
+				floor = {
+					"floor_name": floor_name,
+					"floor_docname": floor_docname,
+					"sequence": cint(row.sequence),
+					"rooms": [],
+					"room_rows": {},
+					"next_room_number": 1,
+				}
+				floors[floor_name] = floor
+				plan.append(floor)
 
 			number_of_rooms = cint(row.number_of_rooms)
 			if number_of_rooms < 1:
 				frappe.throw(_("Row {0}: Rooms must be at least 1.").format(row.idx))
 
 			units_per_room = cint(row.beds_per_room)
-			if requires_bed and units_per_room < 1:
+			validate_mixed_setup(row, units_per_room)
+			beds_per_room = beds_in_room(row, units_per_room)
+			if requires_bed and beds_per_room < 1:
 				frappe.throw(
 					_(
 						"Row {0}: Site {1} uses bed level allocation, so Beds / Bunks must be at least 1."
 					).format(row.idx, self.site),
 					title=_("Beds Required"),
 				)
-
-			beds_per_room = units_per_room * beds_per_unit(row.bed_configuration)
 			row.generated_beds_per_room = beds_per_room
 
 			total_rooms += number_of_rooms
@@ -114,22 +160,30 @@ class AccommodationBulkSetup(Document):
 					title=_("Too Large"),
 				)
 
-			plan.append(
-				{
-					"floor_name": floor_name,
-					"floor_docname": floor_docname,
-					"sequence": cint(row.sequence),
-					"room_type": row.room_type or "Shared",
-					"capacity": cint(row.capacity) or beds_per_room,
-					"rooms": self.build_room_plan(row, floor_docname, number_of_rooms, units_per_room),
-				}
-			)
+			# A repeated floor left at Room Start No 1 carries on after its previous row.
+			start = cint(row.room_start_number) or 1
+			if floor["rooms"] and start == 1:
+				start = floor["next_room_number"]
+			rooms = self.build_room_plan(row, floor["floor_docname"], number_of_rooms, units_per_room, start)
+			for room in rooms:
+				room["room_type"] = row.room_type or "Shared"
+				room["capacity"] = cint(row.capacity) or beds_per_room
+				earlier = floor["room_rows"].get(room["room_number"])
+				if earlier:
+					frappe.throw(
+						_(
+							"Row {0}: Room {1} on floor {2} is also made by row {3}. Change the Room Start No."
+						).format(row.idx, room["room_number"], floor_name, earlier),
+						title=_("Duplicate Room"),
+					)
+				floor["room_rows"][room["room_number"]] = row.idx
+			floor["rooms"].extend(rooms)
+			floor["next_room_number"] = start + number_of_rooms
 
 		return plan
 
-	def build_room_plan(self, row, floor_docname, number_of_rooms, units_per_room):
+	def build_room_plan(self, row, floor_docname, number_of_rooms, units_per_room, start):
 		prefix = (row.room_number_prefix or "").strip()
-		start = cint(row.room_start_number) or 1
 		rooms = []
 
 		for offset in range(number_of_rooms):
@@ -179,8 +233,9 @@ class AccommodationBulkSetup(Document):
 			units = cint(row.beds_per_room)
 			if units < 1:
 				frappe.throw(_("Row {0}: Beds / Bunks must be at least 1.").format(row.idx))
+			validate_mixed_setup(row, units)
 
-			total_beds += units * beds_per_unit(row.bed_configuration)
+			total_beds += beds_in_room(row, units)
 			if total_beds > MAX_BEDS_PER_RUN:
 				frappe.throw(
 					_("A single bulk setup can generate at most {0} beds.").format(MAX_BEDS_PER_RUN),
@@ -195,15 +250,20 @@ class AccommodationBulkSetup(Document):
 			for bed in beds:
 				if bed["bed_number"] in room.existing_numbers:
 					frappe.throw(
-						_("Row {0}: Bed {1} already exists in room {2}. Change the Start No. or the prefix.").format(
-							row.idx, bed["bed_number"], frappe.bold(row.room)
-						),
+						_(
+							"Row {0}: Bed {1} already exists in room {2}. Change the Start No. or the prefix."
+						).format(row.idx, bed["bed_number"], frappe.bold(row.room)),
 						title=_("Duplicate Bed"),
 					)
 				if bed["bed_number"] in room.planned_numbers:
 					frappe.throw(
-						_("Row {0}: Bed {1} in room {2} is also made by row {3}. Change the Start No. or the prefix.").format(
-							row.idx, bed["bed_number"], frappe.bold(row.room), room.planned_numbers[bed["bed_number"]]
+						_(
+							"Row {0}: Bed {1} in room {2} is also made by row {3}. Change the Start No. or the prefix."
+						).format(
+							row.idx,
+							bed["bed_number"],
+							frappe.bold(row.room),
+							room.planned_numbers[bed["bed_number"]],
 						),
 						title=_("Duplicate Bed"),
 					)
@@ -213,9 +273,9 @@ class AccommodationBulkSetup(Document):
 			added = len(room.planned_numbers)
 			if room.capacity and existing + added > room.capacity:
 				frappe.throw(
-					_("Row {0}: Room {1} has a capacity of {2} bed(s). It has {3} and this run adds {4}.").format(
-						row.idx, frappe.bold(row.room), room.capacity, existing, added
-					),
+					_(
+						"Row {0}: Room {1} has a capacity of {2} bed(s). It has {3} and this run adds {4}."
+					).format(row.idx, frappe.bold(row.room), room.capacity, existing, added),
 					title=_("Room Full"),
 				)
 
@@ -225,7 +285,9 @@ class AccommodationBulkSetup(Document):
 
 	def get_bed_only_room(self, row):
 		"""Check that the row's room is an active room of this site, and load its beds."""
-		room = frappe.db.get_value("Accommodation Room", row.room, ["site", "status", "capacity"], as_dict=True)
+		room = frappe.db.get_value(
+			"Accommodation Room", row.room, ["site", "status", "capacity"], as_dict=True
+		)
 		if not room or room.site != self.site:
 			frappe.throw(
 				_("Row {0}: Room {1} does not belong to site {2}.").format(
@@ -341,8 +403,8 @@ class AccommodationBulkSetup(Document):
 			{
 				"room_number": room_plan["room_number"],
 				"floor": floor_plan["floor_docname"],
-				"room_type": floor_plan["room_type"],
-				"capacity": floor_plan["capacity"],
+				"room_type": room_plan["room_type"],
+				"capacity": room_plan["capacity"],
 				"status": "Active",
 			}
 		)

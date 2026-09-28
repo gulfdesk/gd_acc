@@ -235,3 +235,78 @@ class TestAccommodationBulkSetup(FrappeTestCase):
 		self.assertEqual(created["rooms"], 3)
 		self.assertEqual(created["beds"], 0)
 		self.assertEqual(frappe.db.count("Accommodation Bed", {"site": site.name}), 0)
+
+	def test_repeated_floor_gives_its_rooms_different_bed_setups(self):
+		_location, site = make_site()
+		setup = make_bulk_setup(
+			site,
+			[
+				{
+					"floor_name": "01",
+					"number_of_rooms": 1,
+					"room_number_prefix": "1",
+					"bed_configuration": "Bunk",
+					"beds_per_room": 2,
+				},
+				{
+					"floor_name": "01",
+					"number_of_rooms": 2,
+					"room_number_prefix": "1",
+					"bed_configuration": "Single + Bunk",
+					"beds_per_room": 1,
+					"single_beds": 1,
+				},
+			],
+		)
+
+		created = setup.generate()
+
+		# One floor, rooms 101 (2 bunks) then 102 and 103 (1 bunk and 1 single each).
+		self.assertEqual(created["floors"], 1)
+		self.assertEqual(created["rooms"], 3)
+		self.assertEqual(created["beds"], 4 + 3 + 3)
+		self.assertEqual(
+			frappe.get_all(
+				"Accommodation Bed",
+				filters={"room": f"{site.name} - 01 - 102"},
+				fields=["bed_number", "bed_type"],
+				order_by="bed_number asc",
+				as_list=True,
+			),
+			[("B01-L", "Bunk Lower"), ("B01-U", "Bunk Upper"), ("B02", "Single")],
+		)
+
+	def test_repeated_floor_rejects_a_room_number_used_by_its_other_row(self):
+		_location, site = make_site()
+		self.assertRaises(
+			frappe.ValidationError,
+			make_bulk_setup,
+			site,
+			[
+				{"floor_name": "01", "number_of_rooms": 2, "room_number_prefix": "1", "beds_per_room": 1},
+				{
+					"floor_name": "01",
+					"number_of_rooms": 1,
+					"room_number_prefix": "1",
+					"room_start_number": 2,
+					"beds_per_room": 1,
+				},
+			],
+		)
+
+	def test_mixed_setup_needs_a_bunk_and_a_single_bed(self):
+		_location, site = make_site()
+		self.assertRaises(
+			frappe.ValidationError,
+			make_bulk_setup,
+			site,
+			[
+				{
+					"floor_name": "01",
+					"number_of_rooms": 1,
+					"bed_configuration": "Single + Bunk",
+					"beds_per_room": 1,
+					"single_beds": 0,
+				}
+			],
+		)
