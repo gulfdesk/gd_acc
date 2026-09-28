@@ -17,7 +17,7 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 )
 
 OPEN_STATUSES = ("Open", "In Progress")
-MANAGER_ROLES = ("Accommodation Manager", "System Manager")
+MANAGER_ROLES = ("Accommodation Manager", "HR Manager", "System Manager")
 
 
 class AccommodationMaintenance(Document):
@@ -36,7 +36,7 @@ class AccommodationMaintenance(Document):
 			return
 		if not set(MANAGER_ROLES) & set(frappe.get_roles()):
 			frappe.throw(
-				_("Only an Accommodation Manager can cancel a maintenance request."),
+				_("Only an Accommodation Manager or HR Manager can cancel a maintenance request."),
 				frappe.PermissionError,
 				title=_("Not Permitted"),
 			)
