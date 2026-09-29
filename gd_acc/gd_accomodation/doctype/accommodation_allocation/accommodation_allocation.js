@@ -31,14 +31,16 @@ frappe.ui.form.on("Accommodation Allocation", {
 			},
 		}));
 
+		// Only floors and rooms with a free bed. Full, Blocked and Under Maintenance rooms are left out.
 		frm.set_query("floor", () => ({
-			filters: { site: frm.doc.site, status: "Active" },
+			filters: { site: frm.doc.site, status: "Active", available_beds: [">", 0] },
 		}));
 
 		frm.set_query("room", () => ({
 			filters: {
 				floor: frm.doc.floor,
 				status: "Active",
+				occupancy_status: "Available",
 				gender_restriction: gender_restriction_filter(frm.doc.gender),
 			},
 		}));

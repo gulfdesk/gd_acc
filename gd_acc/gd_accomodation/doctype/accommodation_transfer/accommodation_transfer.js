@@ -24,14 +24,16 @@ frappe.ui.form.on("Accommodation Transfer", {
 			},
 		}));
 
+		// Only floors and rooms with a free bed. Full, Blocked and Under Maintenance rooms are left out.
 		frm.set_query("to_floor", () => ({
-			filters: { site: frm.doc.to_site, status: "Active" },
+			filters: { site: frm.doc.to_site, status: "Active", available_beds: [">", 0] },
 		}));
 
 		frm.set_query("to_room", () => ({
 			filters: {
 				floor: frm.doc.to_floor,
 				status: "Active",
+				occupancy_status: "Available",
 				gender_restriction: gender_restriction_filter(frm.doc.gender),
 			},
 		}));
