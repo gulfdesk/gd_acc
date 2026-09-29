@@ -19,3 +19,5 @@ gd_acc.patches.v16_0.remove_employee_accommodation_status
 gd_acc.patches.v16_0.set_room_occupancy_status
 gd_acc.patches.v16_0.set_hierarchy_company
 gd_acc.patches.v16_0.remove_employee_accommodation_fields
+gd_acc.patches.v16_0.split_bed_type_and_bunk_level
+gd_acc.patches.v16_0.set_maintenance_type

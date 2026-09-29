@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate
+from frappe.utils import add_days, flt, getdate, today
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	get_active_allocation,
@@ -333,16 +333,51 @@ def create_entitlement(
 	allowance_frequency=None,
 	salary_structure_assignment=None,
 	remarks=None,
+	items=None,
 ):
 	"""Single-save creation used by the Employee accommodation tab.
 
 	For Company Accommodation with a site, this also houses the employee: the
-	Accommodation Allocation is submitted first and the Entitlement second, in
-	one transaction. If the bed is not available, nothing is created. Without a
-	site, only the entitlement is created and it waits for a bed.
+	Accommodation Allocation, with its Items, is submitted first and the
+	Entitlement second, in one transaction. If the bed is not available, nothing
+	is created. Without a site, only the entitlement is created and it waits for a bed.
+
+	An employee already entitled to Company Accommodation keeps that entitlement
+	and only gets the bed. An open entitlement of another type ends the day before
+	the new one starts.
 	"""
 	if not frappe.has_permission("Accommodation Entitlement", "create"):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	# Checked first, so a same-day switch names the real problem rather than its dates.
+	housed_in = entitlement_type != COMPANY_ACCOMMODATION and get_active_allocation(employee)
+	if housed_in:
+		frappe.throw(
+			_(
+				"{0} is housed under allocation {1}. Release the stay first, then change the entitlement."
+			).format(
+				frappe.bold(frappe.db.get_value("Employee", employee, "employee_name") or employee),
+				frappe.bold(housed_in),
+			),
+			title=_("Employee Housed"),
+		)
+
+	current = get_open_entitlement(employee, from_date)
+	keep_current = bool(
+		current
+		and current.entitlement_type == COMPANY_ACCOMMODATION
+		and entitlement_type == COMPANY_ACCOMMODATION
+	)
+	if keep_current and not site:
+		frappe.throw(
+			_("{0} is already entitled to Company Accommodation under {1}. Choose a bed to allocate.").format(
+				frappe.bold(frappe.db.get_value("Employee", employee, "employee_name") or employee),
+				frappe.bold(current.name),
+			),
+			title=_("Bed Required"),
+		)
+	if current and not keep_current:
+		end_entitlement(current.name, from_date)
 
 	new_allocation = None
 	if entitlement_type == COMPANY_ACCOMMODATION and site:
@@ -366,11 +401,15 @@ def create_entitlement(
 				"bed": bed,
 				"start_date": from_date,
 				"expected_end_date": expected_end_date,
+				"items": get_item_rows(items),
 			}
 		)
 		allocation.insert()
 		allocation.submit()
 		new_allocation = allocation.name
+
+	if keep_current:
+		return {"entitlement": current.name, "allocation": new_allocation}
 
 	entitlement = frappe.new_doc("Accommodation Entitlement")
 	entitlement.update(
@@ -390,6 +429,98 @@ def create_entitlement(
 	entitlement.submit()
 
 	return {"entitlement": entitlement.name, "allocation": new_allocation}
+
+
+def get_open_entitlement(employee, on_date):
+	"""The employee's Active entitlement that is still open on the date, or None."""
+	on_date = getdate(on_date)
+	rows = frappe.get_all(
+		ENTITLEMENT_DOCTYPE,
+		filters={"employee": employee, "docstatus": 1, "status": "Active"},
+		fields=["name", "entitlement_type", "from_date", "to_date"],
+		order_by="from_date desc",
+	)
+	return next((row for row in rows if not row.to_date or getdate(row.to_date) >= on_date), None)
+
+
+def end_entitlement(name, from_date):
+	"""Give the open entitlement an Effective To of the day before from_date.
+
+	Ending a Company Accommodation entitlement of a housed employee marks the stay
+	Pending Release, so a switch to another type then waits for the release.
+	"""
+	entitlement = frappe.get_doc(ENTITLEMENT_DOCTYPE, name)
+	end = add_days(from_date, -1)
+	if getdate(end) < getdate(entitlement.from_date):
+		frappe.throw(
+			_("Entitlement {0} starts on {1}. Choose an Effective From after that date.").format(
+				frappe.bold(name), frappe.format(entitlement.from_date, {"fieldtype": "Date"})
+			),
+			title=_("Invalid Dates"),
+		)
+	entitlement.to_date = end
+	entitlement.save()
+
+
+def end_company_entitlement(employee, end_date):
+	"""End the employee's open Company Accommodation entitlement on end_date.
+
+	Used by a release that also ends the entitlement. Once the end date has
+	come the entitlement is Closed straight away; a later date is closed by the
+	daily close_ended_entitlements job. Returns the entitlement, or None.
+	"""
+	current = get_open_entitlement(employee, end_date)
+	if not current or current.entitlement_type != COMPANY_ACCOMMODATION:
+		return None
+
+	entitlement = frappe.get_doc(ENTITLEMENT_DOCTYPE, current.name)
+	if getdate(end_date) < getdate(entitlement.from_date):
+		frappe.throw(
+			_(
+				"Entitlement {0} starts on {1}, after the release date. End it from the entitlement instead."
+			).format(
+				frappe.bold(entitlement.name), frappe.format(entitlement.from_date, {"fieldtype": "Date"})
+			),
+			title=_("Invalid Dates"),
+		)
+
+	entitlement.to_date = end_date
+	entitlement.save()
+	if getdate(end_date) <= getdate(today()):
+		entitlement.db_set("status", "Closed")
+	return entitlement.name
+
+
+def close_ended_entitlements():
+	"""Daily job: close each Active entitlement whose Effective To has passed.
+
+	An employee still in a bed keeps the Company Accommodation entitlement until
+	the stay is released; the next run closes it.
+	"""
+	rows = frappe.get_all(
+		ENTITLEMENT_DOCTYPE,
+		filters={"docstatus": 1, "status": "Active", "to_date": ("<", today())},
+		fields=["name", "employee", "entitlement_type"],
+	)
+	for row in rows:
+		if row.entitlement_type == COMPANY_ACCOMMODATION and get_active_allocation(row.employee):
+			continue
+		frappe.db.set_value(ENTITLEMENT_DOCTYPE, row.name, "status", "Closed")
+
+
+def get_item_rows(items):
+	"""The Items rows sent by the dialog, as Accommodation Allocation Item values."""
+	if isinstance(items, str):
+		items = frappe.parse_json(items)
+	return [
+		{
+			"accommodation_item": row.get("accommodation_item"),
+			"quantity": row.get("quantity"),
+			"condition": row.get("condition"),
+		}
+		for row in items or []
+		if row.get("accommodation_item")
+	]
 
 
 @frappe.whitelist()
@@ -420,8 +551,11 @@ def get_employee_entitlement_state(employee):
 			"allowance_currency",
 			"allowance_frequency",
 			"allowance_component",
+			"salary_structure_assignment",
+			"salary_structure",
 			"stay_status",
 			"release_date",
+			"remarks",
 		],
 		order_by="from_date desc, creation desc",
 	)
@@ -444,6 +578,8 @@ def get_employee_entitlement_state(employee):
 			"release_reason",
 			"proposed_release_date",
 			"pending_release_reason",
+			"total_items",
+			"outstanding_items",
 		],
 		order_by="start_date desc, creation desc",
 	)
@@ -451,6 +587,14 @@ def get_employee_entitlement_state(employee):
 	active = next((row for row in entitlements if row.status == "Active"), None)
 	active_allocation = get_active_allocation(employee)
 	set_place_labels(allocations)
+	current_room = next((row.room for row in allocations if row.name == active_allocation), None)
+
+	# Accommodation and HR staff read allocations. An employee on self service sees
+	# only the current entitlement and stay; Employee read above keeps it to their own.
+	self_service = not frappe.has_permission("Accommodation Allocation", "read")
+	if self_service:
+		entitlements = [active] if active else []
+		allocations = [row for row in allocations if row.name == active_allocation]
 
 	return {
 		"entitlement": active,
@@ -458,7 +602,46 @@ def get_employee_entitlement_state(employee):
 		"allocations": allocations,
 		"active_allocation": active_allocation,
 		"place": next((row.place for row in allocations if row.name == active_allocation), {}),
+		"room": get_room_summary(current_room),
+		"items": [] if self_service else get_issued_items(employee),
+		"self_service": self_service,
 	}
+
+
+def get_room_summary(room):
+	"""Room type, bed counts and facilities of the room the employee stays in."""
+	if not room:
+		return {}
+
+	return (
+		frappe.db.get_value(
+			"Accommodation Room",
+			room,
+			["room_type", "total_beds", "occupied_beds", "facilities"],
+			as_dict=True,
+		)
+		or {}
+	)
+
+
+def get_issued_items(employee):
+	"""Every submitted Assign line of the employee, newest first, with its outstanding quantity."""
+	lines = frappe.db.sql(
+		"""SELECT d.accommodation_item, d.item_category, d.quantity, d.condition, d.is_returnable,
+			d.outstanding_quantity, e.name AS item_entry, e.posting_date, e.allocation
+		FROM `tabAccommodation Item Entry Detail` d
+		JOIN `tabAccommodation Item Entry` e ON e.name = d.parent
+		WHERE d.parenttype = 'Accommodation Item Entry'
+			AND e.docstatus = 1 AND e.purpose = 'Assign' AND e.employee = %(employee)s
+		ORDER BY e.posting_date DESC, e.name DESC, d.idx""",
+		{"employee": employee},
+		as_dict=True,
+	)
+	for line in lines:
+		line.items_status = (
+			"Outstanding" if line.is_returnable and line.outstanding_quantity > 0 else "Cleared"
+		)
+	return lines
 
 
 # Allocation field, the DocType it links to, and that DocType's short name field.

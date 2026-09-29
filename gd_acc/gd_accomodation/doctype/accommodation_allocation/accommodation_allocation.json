@@ -213,8 +213,8 @@
   },
   {
    "depends_on": "eval:doc.bed",
-   "description": "Single, Bunk Lower or Bunk Upper, taken from the selected bed.",
-   "fetch_from": "bed.bed_type",
+   "description": "Single, Bunk Lower, Bunk Middle or Bunk Upper, taken from the selected bed.",
+   "fetch_from": "bed.bed_type_label",
    "fieldname": "bed_type",
    "fieldtype": "Data",
    "label": "Bed Type",
@@ -325,7 +325,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-21 16:00:00.000000",
+ "modified": "2026-09-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Allocation",
@@ -360,12 +360,18 @@
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager"
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
   },
   {
    "print": 1,

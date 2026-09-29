@@ -20,7 +20,7 @@ ALLOCATION = "Accommodation Allocation"
 PENDING_RELEASE = "Pending Release"
 
 NOTIFY_ROLES = ("Accommodation Manager", "Accommodation User")
-MANAGER_ROLES = ("Accommodation Manager", "System Manager")
+MANAGER_ROLES = ("Accommodation Manager", "HR Manager", "System Manager")
 
 # pending_release_reason -> release_reason proposed by the release dialog
 PROPOSED_RELEASE_REASON = {

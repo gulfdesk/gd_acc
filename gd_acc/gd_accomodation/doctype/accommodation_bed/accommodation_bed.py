@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cint
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	BED_STATUS_AVAILABLE,
@@ -14,13 +15,120 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 	update_room_occupancy,
 )
 
+BED_TYPE_SINGLE = "Single"
+BED_TYPE_BUNK = "Bunk"
+
+# Levels of a bunk, bottom first: the bed number suffix and the Bunk Level of each.
+BUNK_LEVELS = {
+	2: (("L", "Lower"), ("U", "Upper")),
+	3: (("L", "Lower"), ("M", "Middle"), ("U", "Upper")),
+}
+
+
+def bed_type_label(bed_type, bunk_level=None):
+	"""What a bed is, in one phrase: Single, or Bunk with its level, for example Bunk Lower."""
+	if bed_type == BED_TYPE_BUNK and bunk_level:
+		return f"{BED_TYPE_BUNK} {bunk_level}"
+	return bed_type or BED_TYPE_SINGLE
+
 
 class AccommodationBed(Document):
+	def before_insert(self):
+		self.plan_bunk()
+
+	def plan_bunk(self):
+		"""A new Bunk bed becomes its lowest level; after_insert creates the levels above it.
+
+		A bed that already has its Bunk Level (one level made by Bulk Setup, or a row of an
+		import) is a single level and is left as it is. Every level is checked here, before
+		anything is written, so a clash or a full room never leaves half a bunk behind.
+		"""
+		if self.bed_type != BED_TYPE_BUNK or self.bunk_level:
+			return
+
+		levels = BUNK_LEVELS.get(cint(self.bunk_levels) or 2)
+		if not levels:
+			frappe.throw(_("Bunk Levels must be 2 or 3."), title=_("Invalid Bunk"))
+
+		base = (self.bed_number or "").strip()
+		plan = [(f"{base}-{suffix}", level) for suffix, level in levels]
+		for bed_number, _level in plan:
+			if frappe.db.exists("Accommodation Bed", {"room": self.room, "bed_number": bed_number}):
+				frappe.throw(
+					_("Bed {0} already exists in room {1}. Choose another Bed Number.").format(
+						frappe.bold(bed_number), frappe.bold(self.room)
+					),
+					title=_("Duplicate Bed"),
+				)
+
+		capacity = cint(frappe.db.get_value("Accommodation Room", self.room, "capacity"))
+		existing = frappe.db.count("Accommodation Bed", {"room": self.room})
+		if capacity and existing + len(plan) > capacity:
+			frappe.throw(
+				_("Room {0} has a capacity of {1} bed(s). It has {2} and this bunk adds {3}.").format(
+					frappe.bold(self.room), capacity, existing, len(plan)
+				),
+				title=_("Room Full"),
+			)
+
+		self.bed_number, self.bunk_level = plan[0]
+		self.bunk_levels = str(len(plan))
+		self.flags.bunk_levels_above = plan[1:]
+		self.flags.bunk_status = self.status
+
+	def after_insert(self):
+		self.create_bunk_levels()
+
+	def create_bunk_levels(self):
+		above = self.flags.get("bunk_levels_above")
+		if not above:
+			return
+
+		for bed_number, level in above:
+			frappe.get_doc(
+				{
+					"doctype": self.doctype,
+					"bed_number": bed_number,
+					"bed_type": BED_TYPE_BUNK,
+					"bunk_level": level,
+					"bunk_levels": self.bunk_levels,
+					"room": self.room,
+					"status": self.flags.bunk_status,
+					"remarks": self.remarks,
+				}
+			).insert()
+
+		frappe.msgprint(
+			_("Created bunk beds {0}.").format(
+				", ".join([self.bed_number] + [number for number, _level in above])
+			),
+			alert=True,
+			indicator="green",
+		)
+
 	def validate(self):
+		self.validate_bed_type()
 		self.gender_restriction = get_site_gender(self.site)
 		self.validate_room_capacity()
 		self.validate_status_change()
 		self.validate_room_change()
+
+	def validate_bed_type(self):
+		"""A saved Single cannot turn into a Bunk: a bunk is created new, with its levels."""
+		before = self.get_doc_before_save()
+		if (
+			before
+			and self.bed_type == BED_TYPE_BUNK
+			and before.bed_type != BED_TYPE_BUNK
+			and not self.bunk_level
+		):
+			frappe.throw(
+				_("A bunk is created as a new bed, which makes one bed for each level."),
+				title=_("Invalid Bed Type"),
+			)
+		if self.bed_type != BED_TYPE_BUNK:
+			self.bunk_level = None
+		self.bed_type_label = bed_type_label(self.bed_type, self.bunk_level)
 
 	def validate_room_capacity(self):
 		capacity = frappe.db.get_value("Accommodation Room", self.room, "capacity")

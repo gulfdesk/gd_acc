@@ -99,3 +99,87 @@ class TestAccommodationMaintenance(FrappeTestCase):
 		data = get_dashboard_data(location=structure.location.name)
 		self.assertEqual(len(data["open_maintenance"]), data["kpi"]["open_maintenance_requests"])
 		self.assertEqual(len(data["open_maintenance"]), 2)
+
+	def test_permanent_room_maintenance_needs_an_empty_room(self):
+		structure = make_structure()
+		make_allocation(make_employee(), structure)
+
+		self.assertRaises(
+			frappe.ValidationError,
+			make_request,
+			structure,
+			set_bed_under_maintenance=0,
+			room=structure.room.name,
+			maintenance_type="Permanent",
+		)
+
+	def test_temporary_room_maintenance_holds_no_bed(self):
+		structure = make_structure()
+		make_allocation(make_employee(), structure)
+
+		request = make_request(
+			structure, set_bed_under_maintenance=0, room=structure.room.name, maintenance_type="Temporary"
+		)
+
+		self.assertEqual(request.set_room_under_maintenance, 0)
+		self.assertEqual(
+			frappe.db.get_value("Accommodation Room", structure.room.name, "under_maintenance"), 0
+		)
+
+	def test_permanent_room_maintenance_holds_every_bed(self):
+		structure = make_structure()
+
+		make_request(
+			structure, set_bed_under_maintenance=0, room=structure.room.name, maintenance_type="Permanent"
+		)
+
+		statuses = set(frappe.get_all("Accommodation Bed", {"room": structure.room.name}, pluck="status"))
+		self.assertEqual(statuses, {"Maintenance"})
+
+	def test_room_hold_cannot_move_to_a_bed(self):
+		structure = make_structure()
+		request = make_request(
+			structure, set_bed_under_maintenance=0, room=structure.room.name, maintenance_type="Permanent"
+		)
+
+		request.bed = structure.bed.name
+		request.set_bed_under_maintenance = 1
+		self.assertRaises(frappe.ValidationError, request.save)
+
+	def test_resolving_a_room_hold_frees_the_room_and_its_beds(self):
+		structure = make_structure()
+		request = make_request(
+			structure, set_bed_under_maintenance=0, room=structure.room.name, maintenance_type="Permanent"
+		)
+
+		request.status = "Resolved"
+		request.resolution_date = today()
+		request.resolution_details = "Fixed"
+		request.save()
+
+		self.assertEqual(
+			frappe.db.get_value("Accommodation Room", structure.room.name, "under_maintenance"), 0
+		)
+		statuses = set(frappe.get_all("Accommodation Bed", {"room": structure.room.name}, pluck="status"))
+		self.assertEqual(statuses, {"Available"})
+
+	def test_resolving_frees_a_hold_the_request_no_longer_points_at(self):
+		# A room hold left behind when an older version let the request switch to a bed.
+		structure = make_structure()
+		request = make_request(
+			structure, set_bed_under_maintenance=0, room=structure.room.name, maintenance_type="Permanent"
+		)
+		frappe.db.set_value(
+			"Accommodation Maintenance",
+			request.name,
+			{"bed": structure.bed.name, "set_bed_under_maintenance": 1, "set_room_under_maintenance": 0},
+		)
+
+		request = frappe.get_doc("Accommodation Maintenance", request.name)
+		request.status = "Resolved"
+		request.resolution_date = today()
+		request.resolution_details = "Fixed"
+		request.save()
+
+		statuses = set(frappe.get_all("Accommodation Bed", {"room": structure.room.name}, pluck="status"))
+		self.assertEqual(statuses, {"Available"})

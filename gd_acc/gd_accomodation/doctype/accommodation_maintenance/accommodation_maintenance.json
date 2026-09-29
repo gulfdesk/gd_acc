@@ -23,6 +23,7 @@
   "room",
   "bed",
   "set_bed_under_maintenance",
+  "maintenance_type",
   "set_room_under_maintenance",
   "details_section",
   "description",
@@ -145,18 +146,29 @@
   {
    "default": "0",
    "depends_on": "eval:doc.bed",
-   "description": "Sets a free bed to Maintenance while this request is open, and back to Available when it closes. An occupied bed keeps its employee and is flagged Under Maintenance.",
+   "description": "Sets the bed to Maintenance while this request is open, and back to Available when it closes. The bed must be free: transfer or release its employee first.",
    "fieldname": "set_bed_under_maintenance",
    "fieldtype": "Check",
    "label": "Set Bed Under Maintenance"
   },
   {
+   "default": "Temporary",
+   "depends_on": "eval:doc.room && !doc.bed",
+   "description": "Temporary: the room stays in use and no bed is held. Permanent: every bed of the room is held until this request closes, so the room must be empty first.",
+   "fieldname": "maintenance_type",
+   "fieldtype": "Select",
+   "label": "Room Maintenance Type",
+   "options": "Temporary\nPermanent"
+  },
+  {
    "default": "0",
    "depends_on": "eval:doc.room && !doc.bed",
-   "description": "Holds every free and occupied bed of the room while this request is open. The employees stay.",
+   "description": "Set from Room Maintenance Type: on for Permanent, off for Temporary.",
    "fieldname": "set_room_under_maintenance",
    "fieldtype": "Check",
-   "label": "Set Room Under Maintenance"
+   "hidden": 1,
+   "label": "Set Room Under Maintenance",
+   "read_only": 1
   },
   {
    "fieldname": "details_section",
@@ -226,7 +238,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 17:00:00.000000",
+ "modified": "2026-09-29 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Maintenance",
@@ -235,7 +247,6 @@
  "permissions": [
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -257,12 +268,15 @@
    "write": 1
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager"
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
   },
   {
    "print": 1,

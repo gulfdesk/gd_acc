@@ -10,6 +10,8 @@
   "existing_beds",
   "bed_configuration",
   "beds_per_room",
+  "single_beds",
+  "bunk_levels",
   "generated_beds_per_room",
   "bed_number_prefix",
   "bed_start_number"
@@ -17,7 +19,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-21 20:00:00.000000",
+ "modified": "2026-09-28 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Bulk Setup Room",
@@ -30,6 +32,7 @@
  "fields": [
   {
    "columns": 3,
+   "description": "An existing room of this site. Beds Only adds beds to rooms that already exist.",
    "fieldname": "room",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -49,17 +52,17 @@
   {
    "columns": 1,
    "default": "Single",
-   "description": "Single generates one bed per unit. Bunk generates a lower and an upper bed for every unit.",
+   "description": "Single gives one bed per unit. Bunk gives one bed per level of each bunk. Single + Bunk mixes both in one room.",
    "fieldname": "bed_configuration",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Bed Setup",
-   "options": "Single\nBunk"
+   "options": "Single\nBunk\nSingle + Bunk"
   },
   {
    "columns": 1,
    "default": "0",
-   "description": "Single: number of beds to add. Bunk: number of bunk beds to add, each generating an upper and a lower bed.",
+   "description": "Single: number of beds in this room. Bunk or Single + Bunk: number of bunk beds in this room, each giving one bed per Bunk Level.",
    "fieldname": "beds_per_room",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -68,7 +71,28 @@
   {
    "columns": 1,
    "default": "0",
-   "description": "Beds actually added. Bunk setups produce twice the number entered.",
+   "depends_on": "eval:doc.bed_configuration==\"Single + Bunk\"",
+   "description": "Single beds in this room, numbered after the bunks. For example 2 bunks and 1 single give B01-L, B01-U, B02-L, B02-U and B03.",
+   "fieldname": "single_beds",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Single Beds",
+   "mandatory_depends_on": "eval:doc.bed_configuration==\"Single + Bunk\"",
+   "non_negative": 1
+  },
+  {
+   "default": "2",
+   "depends_on": "eval:[\"Bunk\", \"Single + Bunk\"].includes(doc.bed_configuration)",
+   "description": "2 gives each bunk a Lower and an Upper bed (B01-L, B01-U). 3 adds a Middle bed (B01-L, B01-M, B01-U).",
+   "fieldname": "bunk_levels",
+   "fieldtype": "Select",
+   "label": "Bunk Levels",
+   "options": "2\n3"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "description": "Beds actually added: one per level of each bunk, plus the single beds.",
    "fieldname": "generated_beds_per_room",
    "fieldtype": "Int",
    "in_list_view": 1,
