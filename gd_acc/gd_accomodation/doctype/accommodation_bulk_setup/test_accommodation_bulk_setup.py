@@ -164,10 +164,16 @@ class TestAccommodationBulkSetup(FrappeTestCase):
 		self.assertEqual(setup.floors[0].generated_beds_per_room, 6)
 
 		self.assertEqual(
-			frappe.db.count("Accommodation Bed", {"site": site.name, "bed_type": "Bunk Lower"}), 6
+			frappe.db.count(
+				"Accommodation Bed", {"site": site.name, "bed_type": "Bunk", "bunk_level": "Lower"}
+			),
+			6,
 		)
 		self.assertEqual(
-			frappe.db.count("Accommodation Bed", {"site": site.name, "bed_type": "Bunk Upper"}), 6
+			frappe.db.count(
+				"Accommodation Bed", {"site": site.name, "bed_type": "Bunk", "bunk_level": "Upper"}
+			),
+			6,
 		)
 
 		room = f"{site.name} - 01 - 101"
@@ -269,7 +275,7 @@ class TestAccommodationBulkSetup(FrappeTestCase):
 			frappe.get_all(
 				"Accommodation Bed",
 				filters={"room": f"{site.name} - 01 - 102"},
-				fields=["bed_number", "bed_type"],
+				fields=["bed_number", "bed_type_label"],
 				order_by="bed_number asc",
 				as_list=True,
 			),

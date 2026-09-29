@@ -80,7 +80,7 @@ frappe.query_reports["Bed Availability"] = {
 			fieldname: "bed_type",
 			label: __("Bed Type"),
 			fieldtype: "Select",
-			options: "\nSingle\nBunk Lower\nBunk Middle\nBunk Upper\nDouble\nOther",
+			options: "\nSingle\nBunk",
 		},
 		{
 			fieldname: "gender_restriction",

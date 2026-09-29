@@ -58,8 +58,8 @@ def build_bed_plan(row, units_per_room, start=1):
 
 	for _bunk in range(bunks):
 		beds.extend(
-			{"bed_number": f"{prefix}{number:02d}-{suffix}", "bed_type": bed_type}
-			for suffix, bed_type in bunk_levels(row)
+			{"bed_number": f"{prefix}{number:02d}-{suffix}", "bed_type": "Bunk", "bunk_level": level}
+			for suffix, level in bunk_levels(row)
 		)
 		number += 1
 	for _single in range(singles):
@@ -418,6 +418,7 @@ class AccommodationBulkSetup(Document):
 			{
 				"bed_number": bed_plan["bed_number"],
 				"bed_type": bed_plan["bed_type"],
+				"bunk_level": bed_plan.get("bunk_level"),
 				"room": room_plan["room_docname"],
 				"status": "Available",
 			}

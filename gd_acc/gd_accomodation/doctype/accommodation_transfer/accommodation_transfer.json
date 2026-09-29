@@ -170,7 +170,7 @@
   },
   {
    "depends_on": "eval:doc.from_bed",
-   "fetch_from": "from_bed.bed_type",
+   "fetch_from": "from_bed.bed_type_label",
    "fieldname": "from_bed_type",
    "fieldtype": "Data",
    "label": "From Bed Type",
@@ -226,8 +226,8 @@
   },
   {
    "depends_on": "eval:doc.to_bed",
-   "description": "Single, Bunk Lower or Bunk Upper, taken from the selected bed.",
-   "fetch_from": "to_bed.bed_type",
+   "description": "Single, Bunk Lower, Bunk Middle or Bunk Upper, taken from the selected bed.",
+   "fetch_from": "to_bed.bed_type_label",
    "fieldname": "to_bed_type",
    "fieldtype": "Data",
    "label": "To Bed Type",
@@ -269,7 +269,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-28 12:00:00.000000",
+ "modified": "2026-09-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Transfer",

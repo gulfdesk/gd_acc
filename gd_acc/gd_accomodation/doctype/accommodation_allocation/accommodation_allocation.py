@@ -446,9 +446,9 @@ def get_allocatable_beds(doctype, txt, searchfield, start, page_len, filters):
 	beds = frappe.get_all(
 		"Accommodation Bed",
 		filters=conditions,
-		fields=["name", "bed_type"],
+		fields=["name", "bed_type_label"],
 		limit_start=start,
 		limit_page_length=page_len,
 		order_by="name asc",
 	)
-	return [(bed.name, bed.bed_type or "") for bed in beds]
+	return [(bed.name, bed.bed_type_label or "") for bed in beds]

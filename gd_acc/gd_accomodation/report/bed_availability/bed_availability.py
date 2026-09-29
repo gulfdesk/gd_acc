@@ -91,7 +91,7 @@ def get_columns():
 		},
 		{
 			"label": _("Bed Type"),
-			"fieldname": "bed_type",
+			"fieldname": "bed_type_label",
 			"fieldtype": "Data",
 			"width": 110,
 		},
@@ -124,7 +124,7 @@ def get_data(filters):
 			"gender_restriction",
 			"under_maintenance",
 			"hold_reason",
-			"bed_type",
+			"bed_type_label",
 			"current_employee",
 		],
 		order_by="location asc, site asc, floor asc, room asc, bed_number asc",

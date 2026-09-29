@@ -521,7 +521,8 @@ class TestAccommodationAllocation(FrappeTestCase):
 		employee = make_employee()
 
 		bunk = frappe.get_doc("Accommodation Bed", structure.beds[1].name)
-		bunk.bed_type = "Bunk Upper"
+		bunk.bed_type = "Bunk"
+		bunk.bunk_level = "Upper"
 		bunk.save()
 
 		allocation = make_allocation(employee, structure, bed=bunk)
@@ -537,7 +538,8 @@ class TestAccommodationAllocation(FrappeTestCase):
 		employee = make_employee()
 
 		lower = frappe.get_doc("Accommodation Bed", structure.beds[0].name)
-		lower.bed_type = "Bunk Lower"
+		lower.bed_type = "Bunk"
+		lower.bunk_level = "Lower"
 		lower.save()
 
 		results = get_allocatable_beds("Accommodation Bed", "", "name", 0, 20, {"room": structure.room.name})
