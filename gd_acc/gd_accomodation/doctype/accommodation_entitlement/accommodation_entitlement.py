@@ -349,6 +349,19 @@ def create_entitlement(
 	if not frappe.has_permission("Accommodation Entitlement", "create"):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
+	# Checked first, so a same-day switch names the real problem rather than its dates.
+	housed_in = entitlement_type != COMPANY_ACCOMMODATION and get_active_allocation(employee)
+	if housed_in:
+		frappe.throw(
+			_(
+				"{0} is housed under allocation {1}. Release the stay first, then change the entitlement."
+			).format(
+				frappe.bold(frappe.db.get_value("Employee", employee, "employee_name") or employee),
+				frappe.bold(housed_in),
+			),
+			title=_("Employee Housed"),
+		)
+
 	current = get_open_entitlement(employee, from_date)
 	keep_current = bool(
 		current
