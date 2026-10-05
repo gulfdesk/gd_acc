@@ -7,6 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import add_days, flt, getdate, today
 
 from gd_acc.gd_accomodation.accommodation_utils import (
+	can_reverse_history,
 	get_active_allocation,
 	refresh_stay_status,
 )
@@ -174,6 +175,10 @@ class AccommodationEntitlement(Document):
 		handle_entitlement_update(self)
 
 	def before_cancel(self):
+		if can_reverse_history():
+			self.validate_newest_first()
+			return
+
 		if self.status == "Closed":
 			frappe.throw(
 				_(
@@ -192,8 +197,37 @@ class AccommodationEntitlement(Document):
 				title=_("Cannot Undo A Release"),
 			)
 
+	def validate_newest_first(self):
+		"""A System Manager undoes entitlements newest first, so an older one is never reopened twice."""
+		newer = frappe.db.get_value(
+			ENTITLEMENT_DOCTYPE,
+			{
+				"employee": self.employee,
+				"docstatus": 1,
+				"name": ("!=", self.name),
+				"from_date": (">", self.from_date),
+			},
+			"name",
+			order_by="from_date desc",
+		)
+		if newer:
+			frappe.throw(
+				_("Entitlement {0} is newer. Cancel it first, then cancel this one.").format(
+					frappe.bold(newer)
+				),
+				title=_("Undo Newest First"),
+			)
+
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
+
+		if self.previous_allocation:
+			frappe.msgprint(
+				_("Allocation {0} stays released. Cancel it too if it was made by mistake.").format(
+					frappe.bold(self.previous_allocation)
+				),
+				indicator="orange",
+			)
 
 		if (
 			self.previous_entitlement

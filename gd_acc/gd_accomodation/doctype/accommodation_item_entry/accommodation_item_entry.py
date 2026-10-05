@@ -7,7 +7,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate, today
 
 from gd_acc.gd_accomodation import item_balance
-from gd_acc.gd_accomodation.accommodation_utils import HOLDER_FIELDS, resolve_hierarchy
+from gd_acc.gd_accomodation.accommodation_utils import HOLDER_FIELDS, can_reverse_history, resolve_hierarchy
 from gd_acc.gd_accomodation.item_balance import ENTRY_DOCTYPE, to_quantity
 
 RETURN_FIELDS = ("return_type", "against_entry", "against_detail")
@@ -229,8 +229,21 @@ class AccommodationItemEntry(Document):
 		item_balance.refresh_item_balances(self.get_balance_entries())
 
 	def on_trash(self):
-		if self.docstatus == 2:
-			frappe.throw(_("Cancelled Item Entries are kept as history."), title=_("Not Allowed"))
+		if self.docstatus == 2 and not can_reverse_history():
+			frappe.throw(
+				_("Cancelled Item Entries are kept as history. Only a System Manager can delete one."),
+				title=_("Not Allowed"),
+			)
+
+		if self.docstatus == 2 and self.allocation:
+			# The cancelled allocation points back at this entry; drop that link so neither blocks the other.
+			frappe.db.set_value(
+				"Accommodation Allocation",
+				{"name": self.allocation, "docstatus": 2, "item_entry": self.name},
+				"item_entry",
+				None,
+				update_modified=False,
+			)
 
 	def get_balance_entries(self):
 		if self.purpose == "Return":

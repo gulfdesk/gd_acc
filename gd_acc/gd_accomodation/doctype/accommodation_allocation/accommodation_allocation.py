@@ -308,6 +308,50 @@ class AccommodationAllocation(Document):
 		if not transfer:
 			self.warn_outstanding_items()
 
+	def reopen_after_transfer(self, transfer):
+		"""Undo the release made by a cancelled transfer: the stay is Active again in its own bed.
+
+		The bed must still be free for the whole stay, so a bed given to someone since is refused.
+		"""
+		self.validate_employee_has_no_active_allocation()
+		validate_placement(
+			employee=self.employee_name or self.employee,
+			employee_id=self.employee,
+			company=self.company,
+			location=self.location,
+			site=self.site,
+			floor=self.floor,
+			room=self.room,
+			bed=self.bed,
+			start_date=self.start_date,
+			end_date=self.expected_end_date,
+			exclude=self.name,
+		)
+
+		self.db_set(
+			{
+				"status": "Active",
+				"release_date": None,
+				"release_reason": None,
+				"released_by_transfer": None,
+				"proposed_release_date": None,
+				"pending_release_reason": None,
+			}
+		)
+
+		if self.bed:
+			occupy_bed(
+				self.bed,
+				allocation=self.name,
+				employee=self.employee,
+				start_date=self.start_date,
+				reason="Allocation",
+				transfer=transfer,
+				remarks=_("Transfer {0} cancelled.").format(transfer),
+			)
+
+		refresh_stay_status(self.employee)
+
 	def return_items(self, item_returns, posting_date, request_id=None, remarks=None):
 		lines = get_return_lines_from_dialog(item_returns)
 		if not lines:

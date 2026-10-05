@@ -8,6 +8,7 @@ from frappe.utils import getdate
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	CURRENT_STAY_STATUSES,
+	can_reverse_history,
 	resolve_hierarchy,
 	site_requires_bed,
 	validate_placement,
@@ -163,12 +164,76 @@ class AccommodationTransfer(Document):
 		return allocation
 
 	def before_cancel(self):
-		if self.status == "Completed":
+		if self.status != "Completed":
+			return
+
+		if not can_reverse_history():
 			frappe.throw(
 				_(
 					"A completed transfer cannot be cancelled because it would rewrite "
 					"accommodation history. Create a new Accommodation Transfer to move "
-					"{0} back instead."
+					"{0} back instead. Only a System Manager can cancel it to reverse an entry made by mistake."
 				).format(frappe.bold(self.employee_name or self.employee)),
 				title=_("History Is Preserved"),
 			)
+
+		new_allocation = self.get_new_allocation()
+		if new_allocation and new_allocation.docstatus == 1 and new_allocation.released_by_transfer:
+			frappe.throw(
+				_(
+					"{0} moved on from allocation {1} with transfer {2}. Cancel that transfer first, "
+					"then cancel this one."
+				).format(
+					frappe.bold(self.employee_name or self.employee),
+					frappe.bold(new_allocation.name),
+					frappe.bold(new_allocation.released_by_transfer),
+				),
+				title=_("Undo Newest First"),
+			)
+
+	def on_cancel(self):
+		"""Reverse the move: the new stay is cancelled and the employee is back in the old bed.
+
+		When the new stay was already released or cancelled, the employee has left: the new
+		allocation is cancelled too, and the old stay only loses its link to this transfer and
+		stays Closed, so it can be cancelled in turn.
+		"""
+		if self.status != "Completed":
+			self.db_set("status", "Cancelled")
+			return
+
+		new_allocation = self.get_new_allocation()
+		submitted = bool(new_allocation and new_allocation.docstatus == 1)
+		reverse = submitted and new_allocation.status in CURRENT_STAY_STATUSES
+
+		old_allocation = frappe.get_doc("Accommodation Allocation", self.current_allocation)
+		old_allocation.db_set("released_by_transfer", None)
+
+		if submitted:
+			new_allocation.flags.ignore_permissions = True
+			new_allocation.cancel()
+		if reverse:
+			old_allocation.reload()
+			old_allocation.reopen_after_transfer(self.name)
+
+		self.db_set("status", "Cancelled")
+
+		if reverse:
+			message = _("{0} is back in {1} under {2}. Allocation {3} is cancelled.").format(
+				frappe.bold(self.employee_name or self.employee),
+				frappe.bold(self.from_bed or self.from_room or self.from_site),
+				frappe.bold(old_allocation.name),
+				frappe.bold(new_allocation.name),
+			)
+		else:
+			message = _("Allocation {0} stays Closed and can now be cancelled.").format(
+				frappe.bold(old_allocation.name)
+			)
+			if submitted:
+				message += " " + _("Allocation {0} is cancelled.").format(frappe.bold(new_allocation.name))
+		frappe.msgprint(message, indicator="green", alert=True)
+
+	def get_new_allocation(self):
+		if self.new_allocation and frappe.db.exists("Accommodation Allocation", self.new_allocation):
+			return frappe.get_doc("Accommodation Allocation", self.new_allocation)
+		return None

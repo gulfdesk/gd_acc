@@ -65,6 +65,11 @@ def generate_master_code(doctype):
 	return make_autoname(MASTER_CODE_SERIES[doctype][1])
 
 
+def can_reverse_history():
+	"""Only a System Manager may undo a record that history keeps, to reverse an entry made by mistake."""
+	return "System Manager" in frappe.get_roles()
+
+
 def count_active_allocations(doctype, name):
 	"""How many employees are still housed under this master record."""
 	scope_field = ENABLEABLE_MASTERS.get(doctype)
@@ -371,7 +376,7 @@ def check_bed(bed, bed_row, start_date, end_date=None, exclude=None):
 		)
 
 
-def occupy_bed(bed, allocation, employee, start_date, reason="Allocation", transfer=None):
+def occupy_bed(bed, allocation, employee, start_date, reason="Allocation", transfer=None, remarks=None):
 	update_bed_state(
 		bed,
 		status=BED_STATUS_OCCUPIED,
@@ -380,6 +385,7 @@ def occupy_bed(bed, allocation, employee, start_date, reason="Allocation", trans
 		occupied_since=start_date,
 		reason=reason,
 		transfer=transfer,
+		remarks=remarks,
 	)
 
 

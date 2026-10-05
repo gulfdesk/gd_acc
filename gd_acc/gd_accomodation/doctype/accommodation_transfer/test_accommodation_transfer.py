@@ -1,6 +1,8 @@
 # Copyright (c) 2026, Rahmed-dev and contributors
 # For license information, please see license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import today
@@ -12,6 +14,8 @@ from gd_acc.gd_accomodation.doctype.accommodation_allocation.test_accommodation_
 	make_employee,
 	make_structure,
 )
+
+TRANSFER_MODULE = "gd_acc.gd_accomodation.doctype.accommodation_transfer.accommodation_transfer"
 
 
 def make_transfer(employee, allocation, destination, bed=None, submit=True, **kwargs):
@@ -143,6 +147,42 @@ class TestAccommodationTransfer(FrappeTestCase):
 		allocation = make_allocation(employee, origin)
 
 		transfer = make_transfer(employee, allocation, destination)
+		with patch(f"{TRANSFER_MODULE}.can_reverse_history", return_value=False):
+			self.assertRaises(frappe.ValidationError, transfer.cancel)
+
+	def test_system_manager_cancel_reverses_the_transfer(self):
+		origin = make_structure()
+		destination = make_structure()
+		employee = make_employee()
+		allocation = make_allocation(employee, origin)
+
+		transfer = make_transfer(employee, allocation, destination)
+		transfer.reload()
+		transfer.cancel()
+
+		self.assertEqual(
+			frappe.db.get_value("Accommodation Allocation", transfer.new_allocation, "docstatus"), 2
+		)
+		allocation.reload()
+		self.assertEqual(allocation.status, "Active")
+		self.assertFalse(allocation.released_by_transfer)
+		self.assertFalse(allocation.release_date)
+		self.assertEqual(frappe.db.get_value("Accommodation Bed", origin.bed.name, "status"), "Occupied")
+		self.assertEqual(
+			frappe.db.get_value("Accommodation Bed", destination.bed.name, "status"), "Available"
+		)
+		self.assertEqual(get_active_allocation(employee.name), allocation.name)
+
+	def test_reversal_is_refused_when_the_old_bed_is_taken(self):
+		origin = make_structure()
+		destination = make_structure()
+		employee = make_employee()
+		allocation = make_allocation(employee, origin)
+
+		transfer = make_transfer(employee, allocation, destination)
+		make_allocation(make_employee(), origin)
+
+		transfer.reload()
 		self.assertRaises(frappe.ValidationError, transfer.cancel)
 
 	def test_transfer_requires_an_active_allocation(self):
