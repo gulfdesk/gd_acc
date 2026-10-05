@@ -65,9 +65,12 @@ def generate_master_code(doctype):
 	return make_autoname(MASTER_CODE_SERIES[doctype][1])
 
 
-def can_reverse_history():
-	"""Only a System Manager may undo a record that history keeps, to reverse an entry made by mistake."""
-	return "System Manager" in frappe.get_roles()
+def can_reverse_history(doc):
+	"""A user who may delete this record may also undo it, to reverse an entry made by mistake.
+
+	Delete is set per role in Role Permission Manager, so the roles that reverse follow it.
+	"""
+	return frappe.has_permission(doc.doctype, "delete", doc=doc)
 
 
 def count_active_allocations(doctype, name):

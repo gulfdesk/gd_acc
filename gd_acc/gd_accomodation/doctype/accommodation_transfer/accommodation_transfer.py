@@ -167,12 +167,12 @@ class AccommodationTransfer(Document):
 		if self.status != "Completed":
 			return
 
-		if not can_reverse_history():
+		if not can_reverse_history(self):
 			frappe.throw(
 				_(
 					"A completed transfer cannot be cancelled because it would rewrite "
 					"accommodation history. Create a new Accommodation Transfer to move "
-					"{0} back instead. Only a System Manager can cancel it to reverse an entry made by mistake."
+					"{0} back instead. Only a user who may delete transfers can cancel it to reverse a mistake."
 				).format(frappe.bold(self.employee_name or self.employee)),
 				title=_("History Is Preserved"),
 			)

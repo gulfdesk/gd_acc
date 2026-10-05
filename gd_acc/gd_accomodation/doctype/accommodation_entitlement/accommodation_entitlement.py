@@ -175,7 +175,7 @@ class AccommodationEntitlement(Document):
 		handle_entitlement_update(self)
 
 	def before_cancel(self):
-		if can_reverse_history():
+		if can_reverse_history(self):
 			self.validate_newest_first()
 			return
 
