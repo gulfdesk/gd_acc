@@ -25,4 +25,8 @@ def execute():
 			continue
 
 		path = os.path.join(get_app_level_directory_path(folder, "gd_acc"), f"{frappe.scrub(name)}.json")
+		# Frappe v16.50 replaced these files with a module Sidebar and a Dock, and gd_acc no longer ships them.
+		if not os.path.exists(path):
+			continue
+
 		import_file_by_path(path, force=True, ignore_version=True)
