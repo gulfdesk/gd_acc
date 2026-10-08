@@ -36,7 +36,7 @@ def verify_item_balances(assign_entry=None):
 
 	Returns one row per difference. An empty list means every cache is correct.
 	"""
-	frappe.only_for(("Accommodation Manager", "System Manager"))
+	frappe.only_for(("Accommodation Manager", "HR Manager", "System Manager"))
 
 	if assign_entry:
 		batches = [[assign_entry]]
@@ -133,7 +133,7 @@ def add_difference(differences, doctype, name, row, item, field, cache, actual, 
 @frappe.whitelist()
 def repost_item_balances(assign_entry):
 	"""Rebuild the cache of one Assign entry from its submitted lines. It never changes a line."""
-	frappe.only_for("System Manager")
+	frappe.only_for(("HR Manager", "System Manager"))
 
 	purpose = frappe.db.get_value(ENTRY_DOCTYPE, assign_entry, "purpose")
 	if purpose != "Assign":

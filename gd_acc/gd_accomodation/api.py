@@ -136,22 +136,30 @@ def get_dashboard_data(location=None, site=None):
 		"pending_release": frappe.db.count(
 			"Accommodation Allocation", {"docstatus": 1, "status": "Pending Release", **bed_filters}
 		),
-		# An entitlement has no location, so the location and site filters do not apply.
-		"awaiting_bed": frappe.db.count(
-			"Accommodation Entitlement",
-			{
-				"docstatus": 1,
-				"status": "Active",
-				"entitlement_type": "Company Accommodation",
-				"stay_status": ("in", ("Awaiting Bed", "Vacated")),
-			},
+		"housed": frappe.db.count(
+			"Accommodation Allocation",
+			{"docstatus": 1, "status": ("in", ("Active", "Pending Release")), **bed_filters},
 		),
+		# An entitlement has no location, so the location and site filters do not apply.
+		"awaiting_bed": count_unhoused_employees(),
 	}
+
+	by_site = get_occupancy_breakdown("site", bed_filters)
+	site_names = dict(
+		frappe.get_all(
+			"Accommodation Site",
+			filters={"name": ("in", [row["name"] for row in by_site])},
+			fields=["name", "site_name"],
+			as_list=True,
+		)
+	)
+	for row in by_site:
+		row["label"] = site_names.get(row["name"]) or row["name"]
 
 	return {
 		"kpi": kpi,
 		"by_location": get_occupancy_breakdown("location", bed_filters),
-		"by_site": get_occupancy_breakdown("site", bed_filters),
+		"by_site": by_site,
 		"by_site_type": get_site_type_breakdown(bed_filters),
 		"open_maintenance": get_open_maintenance(location, site),
 	}
@@ -178,6 +186,20 @@ def count_employees_by_entitlement():
 		"employees_allowance": allowance,
 		"employees_not_provided": frappe.db.count("Employee", {"status": "Active"}) - provided - allowance,
 	}
+
+
+def count_unhoused_employees():
+	"""Active employees entitled to Company Accommodation with no bed today, as the employee cards count them."""
+	return frappe.db.sql(
+		"""
+		select count(distinct e.employee)
+		from `tabAccommodation Entitlement` e
+		join `tabEmployee` emp on emp.name = e.employee
+		where e.docstatus = 1 and e.status = 'Active' and emp.status = 'Active'
+			and e.entitlement_type = 'Company Accommodation'
+			and e.stay_status in ('Awaiting Bed', 'Vacated')
+		"""
+	)[0][0]
 
 
 def structure_filters_for_site(location, site):

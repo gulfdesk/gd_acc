@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, today
+from frappe.utils import cint, getdate, today
 
 from gd_acc.gd_accomodation import item_balance
 from gd_acc.gd_accomodation.accommodation_utils import (
@@ -18,6 +18,9 @@ from gd_acc.gd_accomodation.accommodation_utils import (
 	resolve_hierarchy,
 	site_requires_bed,
 	validate_placement,
+)
+from gd_acc.gd_accomodation.doctype.accommodation_entitlement.accommodation_entitlement import (
+	end_company_entitlement,
 )
 from gd_acc.gd_accomodation.doctype.accommodation_item_entry.accommodation_item_entry import (
 	create_item_entry,
@@ -109,7 +112,9 @@ class AccommodationAllocation(Document):
 
 			if not item:
 				frappe.throw(
-					_("Row #{0}: Item {1} does not exist.").format(row.idx, frappe.bold(row.accommodation_item)),
+					_("Row #{0}: Item {1} does not exist.").format(
+						row.idx, frappe.bold(row.accommodation_item)
+					),
 					title=_("Invalid Item"),
 				)
 			if item.disabled:
@@ -303,6 +308,50 @@ class AccommodationAllocation(Document):
 		if not transfer:
 			self.warn_outstanding_items()
 
+	def reopen_after_transfer(self, transfer):
+		"""Undo the release made by a cancelled transfer: the stay is Active again in its own bed.
+
+		The bed must still be free for the whole stay, so a bed given to someone since is refused.
+		"""
+		self.validate_employee_has_no_active_allocation()
+		validate_placement(
+			employee=self.employee_name or self.employee,
+			employee_id=self.employee,
+			company=self.company,
+			location=self.location,
+			site=self.site,
+			floor=self.floor,
+			room=self.room,
+			bed=self.bed,
+			start_date=self.start_date,
+			end_date=self.expected_end_date,
+			exclude=self.name,
+		)
+
+		self.db_set(
+			{
+				"status": "Active",
+				"release_date": None,
+				"release_reason": None,
+				"released_by_transfer": None,
+				"proposed_release_date": None,
+				"pending_release_reason": None,
+			}
+		)
+
+		if self.bed:
+			occupy_bed(
+				self.bed,
+				allocation=self.name,
+				employee=self.employee,
+				start_date=self.start_date,
+				reason="Allocation",
+				transfer=transfer,
+				remarks=_("Transfer {0} cancelled.").format(transfer),
+			)
+
+		refresh_stay_status(self.employee)
+
 	def return_items(self, item_returns, posting_date, request_id=None, remarks=None):
 		lines = get_return_lines_from_dialog(item_returns)
 		if not lines:
@@ -366,20 +415,27 @@ def get_return_lines_from_dialog(item_returns):
 
 @frappe.whitelist()
 def release_allocation(
-	allocation, release_date=None, reason="Manual Release", remarks=None, item_returns=None, request_id=None
+	allocation,
+	release_date=None,
+	reason="Manual Release",
+	remarks=None,
+	item_returns=None,
+	request_id=None,
+	end_entitlement=0,
 ):
 	"""Release an allocation from the desk.
 
 	Used both by the Accommodation Allocation form's own Release button and by
 	the Employee tab's Release Accommodation action. The entitlement stays as it
-	is; its Stay Status becomes Vacated. A repeated request with the same
-	request_id does nothing.
+	is and its Stay Status becomes Vacated, unless end_entitlement also ends it on
+	the release date. A repeated request with the same request_id does nothing.
 	"""
 	if request_id and frappe.db.exists("Accommodation Item Entry", {"request_id": request_id}):
 		return allocation
 
+	# A release with nothing to return sends null, which arrives as an empty string.
 	if isinstance(item_returns, str):
-		item_returns = frappe.parse_json(item_returns)
+		item_returns = frappe.parse_json(item_returns) if item_returns.strip() else None
 
 	doc = frappe.get_doc("Accommodation Allocation", allocation)
 	doc.check_permission("submit")
@@ -390,6 +446,9 @@ def release_allocation(
 		item_returns=item_returns,
 		request_id=request_id,
 	)
+
+	if cint(end_entitlement):
+		end_company_entitlement(doc.employee, doc.release_date)
 	return doc.name
 
 
@@ -400,7 +459,9 @@ def get_release_lines(allocation):
 	doc.check_permission("read")
 
 	lines = item_balance.get_outstanding_lines(employee=doc.employee)
-	return sorted(lines, key=lambda line: (line.allocation != doc.name, line.posting_date, line.against_entry))
+	return sorted(
+		lines, key=lambda line: (line.allocation != doc.name, line.posting_date, line.against_entry)
+	)
 
 
 @frappe.whitelist()
@@ -429,9 +490,9 @@ def get_allocatable_beds(doctype, txt, searchfield, start, page_len, filters):
 	beds = frappe.get_all(
 		"Accommodation Bed",
 		filters=conditions,
-		fields=["name", "bed_type"],
+		fields=["name", "bed_type_label"],
 		limit_start=start,
 		limit_page_length=page_len,
 		order_by="name asc",
 	)
-	return [(bed.name, bed.bed_type or "") for bed in beds]
+	return [(bed.name, bed.bed_type_label or "") for bed in beds]

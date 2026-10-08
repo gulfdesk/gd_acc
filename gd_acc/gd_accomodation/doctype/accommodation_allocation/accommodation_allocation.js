@@ -31,14 +31,16 @@ frappe.ui.form.on("Accommodation Allocation", {
 			},
 		}));
 
+		// Only floors and rooms with a free bed. Full, Blocked and Under Maintenance rooms are left out.
 		frm.set_query("floor", () => ({
-			filters: { site: frm.doc.site, status: "Active" },
+			filters: { site: frm.doc.site, status: "Active", available_beds: [">", 0] },
 		}));
 
 		frm.set_query("room", () => ({
 			filters: {
 				floor: frm.doc.floor,
 				status: "Active",
+				occupancy_status: "Available",
 				gender_restriction: gender_restriction_filter(frm.doc.gender),
 			},
 		}));
@@ -151,7 +153,7 @@ function show_pending_release(frm) {
 		"orange"
 	);
 
-	if (frappe.user.has_role("Accommodation Manager") || frappe.user.has_role("System Manager")) {
+	if (frappe.user.has_role(["Accommodation Manager", "HR Manager", "System Manager"])) {
 		frm.add_custom_button(__("Keep Active"), () => {
 			frappe.confirm(
 				__("Keep this allocation Active? The pending release is removed."),
@@ -203,6 +205,16 @@ function build_release_dialog(frm, request_id, lines) {
 			fieldname: "remarks",
 			fieldtype: "Small Text",
 			label: __("Remarks"),
+		},
+		{
+			fieldname: "end_entitlement",
+			fieldtype: "Check",
+			label: __("End Entitlement"),
+			// An exit ends the right to housing; a move or a room change keeps it.
+			default: frm.doc.pending_release_reason ? 1 : 0,
+			description: __(
+				"Also end the Company Accommodation entitlement on the release date. Leave it clear if the employee will get another bed."
+			),
 		},
 	];
 
@@ -311,6 +323,7 @@ function build_release_dialog(frm, request_id, lines) {
 						remarks: values.remarks,
 						item_returns: item_returns.length ? item_returns : null,
 						request_id,
+						end_entitlement: values.end_entitlement ? 1 : 0,
 					},
 					freeze: true,
 					freeze_message: __("Releasing accommodation..."),
@@ -319,7 +332,9 @@ function build_release_dialog(frm, request_id, lines) {
 					dialog.hide();
 					frm.reload_doc();
 					frappe.show_alert({
-						message: __("Accommodation released. The bed is available again."),
+						message: values.end_entitlement
+							? __("Accommodation released and the entitlement ended. The bed is available again.")
+							: __("Accommodation released. The bed is available again."),
 						indicator: "green",
 					});
 				})

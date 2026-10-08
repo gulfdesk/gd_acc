@@ -190,6 +190,18 @@ class TestAccommodationEntitlement(FrappeTestCase):
 		first.reload()
 		self.assertRaises(frappe.ValidationError, first.cancel)
 
+	def test_system_manager_cancels_a_closed_entitlement_newest_first(self):
+		employee = make_employee()
+		first = make_entitlement(employee, "Not Provided", from_date=add_days(today(), -5))
+		second = make_entitlement(employee, "Allowance", allowance_amount=500)
+		frappe.db.set_value("Accommodation Entitlement", first.name, "status", "Closed")
+
+		second.reload()
+		second.cancel()
+		first.reload()
+		first.cancel()
+		self.assertEqual(first.docstatus, 2)
+
 	def test_cancelling_restores_the_previous_entitlement(self):
 		employee = make_employee()
 		first = make_entitlement(employee, "Not Provided", from_date=add_days(today(), -5))

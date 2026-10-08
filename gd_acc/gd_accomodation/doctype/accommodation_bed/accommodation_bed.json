@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:{room} - {bed_number}",
  "creation": "2026-09-17 10:00:00.000000",
@@ -20,6 +21,9 @@
   "held_by_room",
   "under_maintenance",
   "bed_type",
+  "bunk_levels",
+  "bunk_level",
+  "bed_type_label",
   "occupancy_section",
   "current_employee",
   "current_employee_name",
@@ -132,10 +136,38 @@
   },
   {
    "default": "Single",
+   "description": "Bunk on a new bed creates one bed for each level, for example B1-L, B1-M and B1-U.",
    "fieldname": "bed_type",
    "fieldtype": "Select",
    "label": "Bed Type",
-   "options": "Single\nBunk Upper\nBunk Lower\nDouble\nOther"
+   "options": "Single\nBunk"
+  },
+  {
+   "default": "2",
+   "depends_on": "eval:doc.bed_type==\"Bunk\" && doc.__islocal",
+   "description": "2 creates Lower and Upper. 3 creates Lower, Middle and Upper.",
+   "fieldname": "bunk_levels",
+   "fieldtype": "Select",
+   "label": "Bunk Levels",
+   "mandatory_depends_on": "eval:doc.bed_type==\"Bunk\" && doc.__islocal",
+   "options": "2\n3"
+  },
+  {
+   "depends_on": "eval:doc.bed_type==\"Bunk\" && !doc.__islocal",
+   "fieldname": "bunk_level",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Bunk Level",
+   "options": "\nLower\nMiddle\nUpper",
+   "read_only": 1
+  },
+  {
+   "description": "Single, or Bunk with its level, for example Bunk Lower. Shown wherever the bed is picked.",
+   "fieldname": "bed_type_label",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Bed Type Label",
+   "read_only": 1
   },
   {
    "fieldname": "occupancy_section",
@@ -189,7 +221,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 20:00:00.000000",
+ "modified": "2026-09-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "GD Accomodation",
  "name": "Accommodation Bed",
@@ -217,12 +249,15 @@
    "role": "Accommodation User"
   },
   {
+   "create": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager"
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
   },
   {
    "print": 1,
@@ -241,6 +276,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

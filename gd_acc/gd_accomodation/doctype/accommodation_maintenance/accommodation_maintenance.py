@@ -4,28 +4,68 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate
+from frappe.utils import getdate, today
 
 from gd_acc.gd_accomodation.accommodation_utils import (
 	BED_STATUS_AVAILABLE,
 	BED_STATUS_BLOCKED,
 	BED_STATUS_MAINTENANCE,
 	BED_STATUS_OCCUPIED,
+	CURRENT_STAY_STATUSES,
 	resolve_hierarchy,
 	update_bed_state,
 	update_room_occupancy,
 )
 
 OPEN_STATUSES = ("Open", "In Progress")
-MANAGER_ROLES = ("Accommodation Manager", "System Manager")
+ROOM_PERMANENT = "Permanent"
+# A finished request is locked; only a System Manager changes it, from the list's Actions > Edit.
+LOCKED_STATUSES = ("Resolved", "Closed", "Cancelled")
+RESOLVED_STATUSES = ("Resolved", "Closed")
+# While a request holds its bed or room, the place and the hold stay as they are.
+HOLD_FIELDS = ("location", "site", "floor", "room", "bed", "maintenance_type", "set_bed_under_maintenance")
+MANAGER_ROLES = ("Accommodation Manager", "HR Manager", "System Manager")
 
 
 class AccommodationMaintenance(Document):
 	def validate(self):
+		self.validate_not_locked()
+		self.validate_hold_unchanged()
 		self.validate_cancel_right()
 		self.apply_hierarchy()
 		self.validate_dates()
 		self.validate_hold_target()
+
+	def validate_not_locked(self):
+		before = self.get_doc_before_save()
+		if not before or before.status not in LOCKED_STATUSES:
+			return
+		if "System Manager" in frappe.get_roles():
+			return
+		frappe.throw(
+			_(
+				"Maintenance request {0} is {1} and can no longer be edited. A System Manager can "
+				"change it from the list: select it, then Actions > Edit."
+			).format(frappe.bold(self.name), _(before.status)),
+			frappe.PermissionError,
+			title=_("Request Locked"),
+		)
+
+	def validate_hold_unchanged(self):
+		"""A request that holds a bed or room keeps its place: resolve or cancel it, then raise a new one."""
+		before = self.get_doc_before_save()
+		if not before or not holds(before):
+			return
+		changed = [field for field in HOLD_FIELDS if (self.get(field) or None) != (before.get(field) or None)]
+		if not changed:
+			return
+		frappe.throw(
+			_(
+				"Maintenance request {0} holds {1}, so its place and hold cannot change. Resolve or "
+				"cancel it to free the beds, then raise a new request."
+			).format(frappe.bold(self.name), frappe.bold(before.bed or before.room)),
+			title=_("Request Holds a Place"),
+		)
 
 	def validate_cancel_right(self):
 		"""Only a manager sets the status to Cancelled, on a new record too."""
@@ -36,7 +76,7 @@ class AccommodationMaintenance(Document):
 			return
 		if not set(MANAGER_ROLES) & set(frappe.get_roles()):
 			frappe.throw(
-				_("Only an Accommodation Manager can cancel a maintenance request."),
+				_("Only an Accommodation Manager or HR Manager can cancel a maintenance request."),
 				frappe.PermissionError,
 				title=_("Not Permitted"),
 			)
@@ -55,13 +95,26 @@ class AccommodationMaintenance(Document):
 		self.room = resolved["room"]
 
 	def validate_dates(self):
+		if self.status in RESOLVED_STATUSES and not (self.resolution_date and self.resolution_details):
+			frappe.throw(
+				_("A {0} request needs its Resolution Date and Resolution Details.").format(_(self.status)),
+				title=_("Resolution Missing"),
+			)
 		if self.resolution_date and getdate(self.resolution_date) < getdate(self.reported_on):
 			frappe.throw(_("Resolution Date cannot be before Reported On."), title=_("Invalid Dates"))
+		if self.resolution_date and getdate(self.resolution_date) > getdate(today()):
+			frappe.throw(_("Resolution Date cannot be in the future."), title=_("Invalid Dates"))
 
 	def validate_hold_target(self):
-		"""Maintenance may hold an occupied bed or room, never a Blocked one."""
+		"""Maintenance holds only a free bed or an empty room, never a Blocked one.
+
+		A room request holds the room only when its Room Maintenance Type is Permanent;
+		a Temporary one leaves every bed in use.
+		"""
 		if self.bed:
 			self.set_room_under_maintenance = 0
+		else:
+			self.set_room_under_maintenance = int(bool(self.room) and self.maintenance_type == ROOM_PERMANENT)
 
 		if not self.is_holding():
 			return
@@ -76,54 +129,91 @@ class AccommodationMaintenance(Document):
 				)
 		elif self.room and frappe.db.get_value("Accommodation Room", self.room, "is_blocked"):
 			frappe.throw(
-				_("Room {0} is Blocked. Clear the hold before maintenance starts.").format(frappe.bold(self.room)),
+				_("Room {0} is Blocked. Clear the hold before maintenance starts.").format(
+					frappe.bold(self.room)
+				),
 				title=_("Room Blocked"),
 			)
 
+		if self.hold_starts():
+			self.validate_nobody_housed()
+
+	def hold_starts(self):
+		"""True when this save starts holding its bed or room, so an old hold stays editable."""
+		before = self.get_doc_before_save()
+		if not before or before.status not in OPEN_STATUSES:
+			return True
+		if before.bed != self.bed or before.room != self.room:
+			return True
+		if self.bed:
+			return not before.set_bed_under_maintenance
+		return not before.set_room_under_maintenance
+
+	def validate_nobody_housed(self):
+		"""A bed or room under maintenance must be empty: move or release its employees first."""
+		filters = {"bed": self.bed} if self.bed else {"room": self.room}
+		occupied = frappe.get_all(
+			"Accommodation Allocation",
+			filters={**filters, "docstatus": 1, "status": ("in", CURRENT_STAY_STATUSES)},
+			fields=["name", "employee_name", "employee", "bed"],
+			order_by="bed asc",
+		)
+		if not occupied:
+			return
+
+		if self.bed:
+			stay = occupied[0]
+			frappe.throw(
+				_(
+					"Bed {0} is allocated to {1} under {2}. Transfer the employee to another bed or "
+					"release the allocation before putting this bed under maintenance."
+				).format(
+					frappe.bold(self.bed),
+					frappe.bold(stay.employee_name or stay.employee),
+					frappe.bold(stay.name),
+				),
+				title=_("Bed Occupied"),
+			)
+
+		stays = "<br>".join(
+			_("{0}: {1} under {2}").format(
+				frappe.bold(frappe.db.get_value("Accommodation Bed", stay.bed, "bed_number") or stay.bed),
+				frappe.bold(stay.employee_name or stay.employee),
+				stay.name,
+			)
+			for stay in occupied
+		)
+		frappe.throw(
+			_(
+				"Room {0} has {1} occupied bed(s). Transfer or release these allocations before putting "
+				"the whole room under maintenance, or choose Temporary to keep the room in use:<br>{2}"
+			).format(frappe.bold(self.room), len(occupied), stays),
+			title=_("Room Occupied"),
+		)
+
 	def is_holding(self):
 		"""True while this record is open and holds a bed or a whole room."""
-		if self.status not in OPEN_STATUSES:
-			return False
-		if self.bed:
-			return bool(self.set_bed_under_maintenance)
-		return bool(self.room and self.set_room_under_maintenance)
-
-	def hold_was_set(self, fieldname):
-		"""True when the flag was set before this save, so a cleared flag still releases the hold."""
-		before = self.get_doc_before_save()
-		return bool(before and before.get(fieldname))
+		return holds(self)
 
 	def on_update(self):
 		self.apply_maintenance_state()
 
 	def on_trash(self):
-		if not self.is_holding():
-			return
-		if self.bed:
-			release_bed_maintenance(self.bed, exclude=self.name)
-		else:
-			release_room_maintenance(self.room, exclude=self.name)
+		self.release_holds()
 
 	def apply_maintenance_state(self):
-		if self.bed:
-			if self.set_bed_under_maintenance or self.hold_was_set("set_bed_under_maintenance"):
-				self.apply_bed_hold()
-		elif self.room and (
-			self.set_room_under_maintenance or self.hold_was_set("set_room_under_maintenance")
-		):
-			self.apply_room_hold()
-
-	def apply_bed_hold(self):
 		if self.is_holding():
-			hold_bed(self.bed, self.name)
-		else:
-			release_bed_maintenance(self.bed, exclude=self.name)
-
-	def apply_room_hold(self):
-		if not self.is_holding():
-			release_room_maintenance(self.room, exclude=self.name)
+			if self.bed:
+				hold_bed(self.bed, self.name)
+			else:
+				self.apply_room_hold()
 			return
 
+		before = self.get_doc_before_save()
+		if before and holds(before):
+			self.release_holds()
+
+	def apply_room_hold(self):
 		frappe.db.set_value("Accommodation Room", self.room, "under_maintenance", 1, update_modified=False)
 		beds = frappe.get_all(
 			"Accommodation Bed",
@@ -133,6 +223,35 @@ class AccommodationMaintenance(Document):
 		for bed in beds:
 			hold_bed(bed, self.name)
 		update_room_occupancy(self.room)
+
+	def release_holds(self):
+		"""Free every bed and room this record holds, whatever its fields say now.
+
+		The beds are found by the record named in their hold reason, so a hold is freed
+		even when the record no longer points at it. Another open record keeps its own.
+		"""
+		beds = frappe.get_all(
+			"Accommodation Bed",
+			filters={"under_maintenance": 1, "hold_reason": ("like", f"%{self.name}")},
+			fields=["name", "room"],
+		)
+		rooms = {bed.room for bed in beds} | ({self.room} if self.room else set())
+		for room in rooms:
+			if frappe.db.get_value("Accommodation Room", room, "under_maintenance"):
+				release_room_maintenance(room, exclude=self.name)
+		for bed in beds:
+			release_bed_maintenance(bed.name, exclude=self.name)
+		for room in rooms:
+			update_room_occupancy(room)
+
+
+def holds(record):
+	"""True while the record is open and holds a bed or a whole room."""
+	if record.status not in OPEN_STATUSES:
+		return False
+	if record.bed:
+		return bool(record.set_bed_under_maintenance)
+	return bool(record.room and record.set_room_under_maintenance)
 
 
 def hold_bed(bed, record):
@@ -202,7 +321,11 @@ def release_bed_maintenance(bed, exclude):
 	if holder:
 		# The bed stays held. Its reason names the record that still holds it.
 		frappe.db.set_value(
-			"Accommodation Bed", bed, "hold_reason", _("Maintenance {0}").format(holder), update_modified=False
+			"Accommodation Bed",
+			bed,
+			"hold_reason",
+			_("Maintenance {0}").format(holder),
+			update_modified=False,
 		)
 		return
 
