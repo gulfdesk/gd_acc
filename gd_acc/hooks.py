@@ -11,15 +11,12 @@ app_license = "mit"
 required_apps = ["frappe/hrms"]
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "gd_acc",
-# 		"logo": "/assets/gd_acc/logo.png",
-# 		"title": "GD Accommodation Management",
-# 		"route": "/gd_acc",
-# 		"has_permission": "gd_acc.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "gd_acc",
+		"title": "GD Accommodation Management",
+	}
+]
 
 # Includes in <head>
 # ------------------
